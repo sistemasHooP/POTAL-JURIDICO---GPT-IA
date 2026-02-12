@@ -131,28 +131,28 @@ var ProcessosService = {
     // CPF/CNPJ informado: tenta localizar cliente e/ou cadastrar automaticamente
     if (!clienteId && payload.cpf_cliente) {
       var docDigits = String(payload.cpf_cliente).replace(/\D/g, '');
-      var cpfNormalizado;
+      var documentoNormalizado;
 
       if (docDigits.length <= 11) {
-        cpfNormalizado = Utils.normalizarCPF(payload.cpf_cliente);
-        if (!cpfNormalizado || cpfNormalizado.length !== 11) {
+        documentoNormalizado = Utils.normalizarCPF(payload.cpf_cliente);
+        if (!documentoNormalizado || documentoNormalizado.length !== 11) {
           throw new Error('CPF do cliente inválido. Informe 11 dígitos.');
         }
-        if (!Utils.isValidCPF(cpfNormalizado)) {
+        if (!Utils.isValidCPF(documentoNormalizado)) {
           throw new Error('CPF do cliente inválido. Verifique os dígitos informados.');
         }
       } else {
-        cpfNormalizado = Utils.normalizarCNPJ(payload.cpf_cliente);
-        if (!cpfNormalizado || cpfNormalizado.length !== 14) {
+        documentoNormalizado = Utils.normalizarCNPJ(payload.cpf_cliente);
+        if (!documentoNormalizado || documentoNormalizado.length !== 14) {
           throw new Error('CNPJ do cliente inválido. Informe 14 dígitos.');
         }
-        if (!Utils.isValidCNPJ(cpfNormalizado)) {
+        if (!Utils.isValidCNPJ(documentoNormalizado)) {
           throw new Error('CNPJ do cliente inválido. Verifique os dígitos informados.');
         }
       }
 
       // Tenta achar cliente existente
-      var clienteExistente = ClienteService.buscarPorCPF(cpfNormalizado);
+      var clienteExistente = ClienteService.buscarPorCPF(documentoNormalizado);
 
       if (clienteExistente) {
         clienteId = clienteExistente.id;
@@ -179,7 +179,7 @@ var ProcessosService = {
         } else {
           var novoCliente = Database.create(CONFIG.SHEET_NAMES.CLIENTES, {
             nome_completo: nomeCliente,
-            cpf: cpfNormalizado,
+            cpf: documentoNormalizado,
             email: emailCliente,
             telefone: telefoneCliente,
             status: ENUMS.STATUS_CLIENTE.ATIVO,
@@ -196,7 +196,7 @@ var ProcessosService = {
           Utils.logAction(
             auth.user.email,
             ENUMS.ACOES_LOG.CRIAR_CLIENTE,
-            'Cliente criado automaticamente no fluxo de processo. CPF: ' + Utils.maskCPF(cpfNormalizado)
+            'Cliente criado automaticamente no fluxo de processo. Documento: ' + Utils.maskDocumento(documentoNormalizado)
           );
         }
       }
@@ -361,6 +361,51 @@ var ProcessosService = {
     });
 
     return { salvo: true };
+  },
+
+
+  /**
+   * Lista notificações de prazos do usuário logado.
+   * Respeita o filtro de visibilidade por perfil (ADVOGADO vê apenas atribuídos).
+   */
+  getNotificacoesPrazos: function(payload) {
+    var processos = this.listarProcessos(payload);
+    var hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    var notificacoes = [];
+
+    (processos || []).forEach(function(proc) {
+      if (!proc || !proc.data_prazo) return;
+
+      var status = String(proc.status || '').toUpperCase();
+      if (status === ENUMS.STATUS_PROCESSO.ARQUIVADO || status === ENUMS.STATUS_PROCESSO.CANCELADO) return;
+
+      var prazoDate = new Date(proc.data_prazo);
+      if (isNaN(prazoDate.getTime())) return;
+
+      prazoDate.setHours(0, 0, 0, 0);
+      var diffDias = Math.ceil((prazoDate.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+      // janela de notificação: vencidos até 30 dias e próximos 30 dias
+      if (diffDias < -30 || diffDias > 30) return;
+
+      notificacoes.push({
+        id: proc.id,
+        numero_processo: proc.numero_processo || 'S/N',
+        parte_nome: proc.parte_nome || '-',
+        tipo: proc.tipo || '-',
+        status: proc.status || '-',
+        data_prazo: prazoDate,
+        diff_dias: diffDias
+      });
+    });
+
+    notificacoes.sort(function(a, b) {
+      return a.diff_dias - b.diff_dias;
+    });
+
+    return notificacoes;
   },
 
   /**

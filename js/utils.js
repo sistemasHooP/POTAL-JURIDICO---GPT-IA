@@ -209,6 +209,59 @@ const Utils = {
             .replace(/'/g, '&#039;');
     },
 
+
+    /**
+     * Mantém apenas dígitos do documento.
+     */
+    onlyDigits: function(value) {
+        return String(value || '').replace(/\D/g, '');
+    },
+
+    /**
+     * Detecta se o documento é CPF, CNPJ ou inválido.
+     */
+    getDocumentType: function(value) {
+        const d = this.onlyDigits(value);
+        if (d.length <= 11 && d.length > 0) return 'CPF';
+        if (d.length > 11 && d.length <= 14) return 'CNPJ';
+        return 'INVALIDO';
+    },
+
+    /**
+     * Formata documento automaticamente (CPF/CNPJ).
+     */
+    formatDocument: function(value) {
+        const d = this.onlyDigits(value);
+        if (d.length === 11) {
+            return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        if (d.length === 14) {
+            return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        return String(value || '');
+    },
+
+    /**
+     * Aplica máscara dinâmica em campo de documento (CPF/CNPJ).
+     */
+    maskDocumentInput: function(rawValue) {
+        let v = this.onlyDigits(rawValue);
+        if (v.length > 14) v = v.substring(0, 14);
+
+        if (v.length <= 11) {
+            if (v.length > 9) return v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+            if (v.length > 6) return v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+            if (v.length > 3) return v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            return v;
+        }
+
+        if (v.length > 12) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+        if (v.length > 8) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+        if (v.length > 5) return v.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        if (v.length > 2) return v.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+        return v;
+    },
+
     /**
      * Valida CPF usando algoritmo oficial brasileiro (dígitos verificadores).
      * @param {string} cpf - CPF (apenas dígitos ou com pontuação)
