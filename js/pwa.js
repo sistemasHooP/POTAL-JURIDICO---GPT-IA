@@ -13,6 +13,21 @@ let deferredPrompt;
 let swRegistration = null;
 let refreshing = false;
 
+const isLoginPage = (function () {
+  try {
+    const path = window.location.pathname || '';
+    const lastSegment = path.split('/').pop();
+
+    // cobre:
+    // - domínio raiz: /
+    // - GitHub Pages em subpasta: /repo/
+    // - acesso direto: /index.html ou /repo/index.html
+    return lastSegment === '' || lastSegment === 'index.html';
+  } catch (e) {
+    return false;
+  }
+})();
+
 // 1) Registro do Service Worker (PWA)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
@@ -26,7 +41,8 @@ if ('serviceWorker' in navigator) {
       console.log('[PWA] Service Worker registrado com sucesso:', swRegistration.scope);
 
       // Se já existir um SW esperando, força ativação (evita usuário preso no cache antigo)
-      if (swRegistration.waiting) {
+      // EXCEÇÃO: na tela de login evitamos auto-update para não causar "pisca"/reload.
+      if (swRegistration.waiting && !isLoginPage) {
         console.log('[PWA] SW aguardando ativação. Aplicando update...');
         swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
@@ -39,6 +55,10 @@ if ('serviceWorker' in navigator) {
         newWorker.addEventListener('statechange', () => {
           // installed + já existe controller => é update (não é primeira instalação)
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            if (isLoginPage) {
+              console.log('[PWA] Update detectado na tela de login. Atualização adiada para evitar recarregamento visual.');
+              return;
+            }
             console.log('[PWA] Nova versão detectada. Atualizando agora...');
             if (swRegistration.waiting) {
               swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -54,6 +74,11 @@ if ('serviceWorker' in navigator) {
 
   // Quando o SW muda o controller, recarrega a página uma vez para aplicar update
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (isLoginPage) {
+      console.log('[PWA] controllerchange na tela de login ignorado para evitar efeito de pisca.');
+      return;
+    }
+
     if (refreshing) return;
     refreshing = true;
     console.log('[PWA] Controller alterado. Recarregando para aplicar update...');

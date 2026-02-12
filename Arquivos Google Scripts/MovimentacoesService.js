@@ -106,27 +106,36 @@ var MovimentacoesService = {
 
     // Notificação por e-mail (respeita preferência do cliente)
     var emailInteressado = String(processo.email_interessado || '').trim().toLowerCase();
-    if (emailInteressado && Utils.isValidEmail(emailInteressado)) {
-      // Verifica se o cliente desativou notificações
-      var notificacoesAtivas = true;
-      if (processo.cliente_id) {
-        try {
-          var clienteNotif = Database.findById(CONFIG.SHEET_NAMES.CLIENTES, processo.cliente_id);
-          if (clienteNotif && String(clienteNotif.notificacoes_ativas || '').toUpperCase() === 'NAO') {
-            notificacoesAtivas = false;
-            Logger.log('[MovimentacoesService] Notificação desativada para cliente ID: ' + processo.cliente_id);
-          }
-        } catch (clienteErr) {
-          Logger.log('[MovimentacoesService] Erro ao verificar preferência de notificação: ' + clienteErr);
-        }
-      }
+    var notificacoesAtivas = true;
 
-      if (notificacoesAtivas) {
-        try {
-          this._enviarEmailNotificacao(processo, novaMov, payload.data_prazo);
-        } catch (emailError) {
-          Logger.log('[MovimentacoesService] Erro ao enviar email: ' + emailError);
+    if (processo.cliente_id) {
+      try {
+        var clienteNotif = Database.findById(CONFIG.SHEET_NAMES.CLIENTES, processo.cliente_id);
+
+        if (clienteNotif && String(clienteNotif.notificacoes_ativas || '').toUpperCase() === 'NAO') {
+          notificacoesAtivas = false;
+          Logger.log('[MovimentacoesService] Notificação desativada para cliente ID: ' + processo.cliente_id);
         }
+
+        // Fallback: se o processo não tiver e-mail, usa o e-mail atual do cliente
+        if ((!emailInteressado || !Utils.isValidEmail(emailInteressado)) && clienteNotif && clienteNotif.email) {
+          var emailClienteAtual = String(clienteNotif.email || '').trim().toLowerCase();
+          if (Utils.isValidEmail(emailClienteAtual)) {
+            emailInteressado = emailClienteAtual;
+            Database.update(CONFIG.SHEET_NAMES.PROCESSOS, processo.id, { email_interessado: emailClienteAtual });
+            processo.email_interessado = emailClienteAtual;
+          }
+        }
+      } catch (clienteErr) {
+        Logger.log('[MovimentacoesService] Erro ao verificar preferência/email do cliente: ' + clienteErr);
+      }
+    }
+
+    if (notificacoesAtivas && emailInteressado && Utils.isValidEmail(emailInteressado)) {
+      try {
+        this._enviarEmailNotificacao(processo, novaMov, payload.data_prazo);
+      } catch (emailError) {
+        Logger.log('[MovimentacoesService] Erro ao enviar email: ' + emailError);
       }
     }
 
@@ -212,6 +221,20 @@ var MovimentacoesService = {
         '</div>';
     }
 
+    
+    var linkPortalCliente = 'https://sistemashoop.github.io/POTAL-JURIDICO---GPT-IA/cliente/index.html';
+
+    var tutorialHtml =
+      '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-top:16px;">' +
+      '  <p style="margin:0 0 8px 0;color:#334155;font-weight:bold;">Como acompanhar seu processo:</p>' +
+      '  <ol style="margin:0 0 8px 18px;padding:0;color:#475569;font-size:13px;line-height:1.5;">' +
+      '    <li>Acesse a área do cliente pelo link abaixo;</li>' +
+      '    <li>Informe seu CPF ou CNPJ cadastrado;</li>' +
+      '    <li>Digite o código enviado para seu e-mail para entrar com segurança.</li>' +
+      '  </ol>' +
+      '  <a href="' + linkPortalCliente + '" target="_blank" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px;font-weight:600;font-size:13px;">Abrir Área do Cliente</a>' +
+      '</div>';
+
     var htmlBody =
       '<div style="font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8f9fa; padding: 20px; border-radius: 8px;">' +
       '  <div style="background-color: #2c3e50; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">' +
@@ -232,7 +255,8 @@ var MovimentacoesService = {
       '    </div>' +
       prazoHtml +
       btnCalendar +
-      '    <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">' +
+      tutorialHtml +
+      '    <hr style=\"border: 0; border-top: 1px solid #eee; margin: 30px 0;\">' +
       '    <p style="font-size: 12px; color: #95a5a6; text-align: center;">Este é um e-mail automático do Sistema Jurídico RPPS. Por favor, não responda.</p>' +
       '  </div>' +
       '</div>';
