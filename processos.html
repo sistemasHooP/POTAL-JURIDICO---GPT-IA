@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Processos - Sistema Juridico RPPS</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fonte Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS Personalizado -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
+
+    <!-- Navbar Mobile (Topo) -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
+            </div>
+            <span class="font-bold text-lg tracking-tight">RPPS Jurídico</span>
+        </div>
+    </nav>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar (Desktop) -->
+        <aside class="hidden md:flex flex-col w-72 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white h-full shrink-0 shadow-2xl z-20">
+            <div class="px-6 py-5 border-b border-white/5">
+                <h1 class="text-xl font-black flex items-center gap-2.5 tracking-tight">
+                    <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
+                    RPPS Jurídico
+                </h1>
+                <p class="text-[10px] text-slate-500 mt-0.5 pl-[38px] uppercase tracking-[0.2em]">Sistema v2.0</p>
+            </div>
+            <div class="px-5 py-4 border-b border-white/5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-sm text-white shadow-lg shadow-blue-900/30">
+                        <span id="user-initials">U</span>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold truncate" id="user-name-display">Carregando...</p>
+                        <p class="text-[10px] text-blue-400 uppercase tracking-wider font-medium" id="user-profile-display">...</p>
+                    </div>
+                </div>
+            </div>
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <p class="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] px-3 mb-2">Menu</p>
+                <a href="dashboard.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Dashboard
+                </a>
+                <a href="processos.html" class="flex items-center gap-3 px-3.5 py-2.5 bg-blue-600/20 text-blue-300 rounded-xl transition-all text-sm font-medium border border-blue-500/20">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Processos
+                </a>
+                <a href="clientes.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
+                    Clientes
+                </a>
+                <a href="novo-processo.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Novo Processo
+                </a>
+                <a href="advogados.html" data-admin-only class="hidden items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Advogados
+                </a>
+            </nav>
+            <div class="p-3 border-t border-white/5">
+                <button id="desktop-logout-btn" class="flex items-center gap-3 w-full px-3.5 py-2.5 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all text-sm">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Sair do Sistema
+                </button>
+            </div>
+        </aside>
+
+        <!-- Conteudo Principal -->
+        <main class="flex-1 h-full overflow-y-auto bg-slate-50 p-4 md:p-8">
+
+            <!-- Header da Pagina -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Processos</h2>
+                    <p class="text-slate-500">Gerencie e pesquise os processos do RPPS.</p>
+                </div>
+                <a href="novo-processo.html" class="w-full md:w-auto bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-medium shadow-lg shadow-slate-500/20 flex items-center justify-center gap-2 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Novo Processo
+                </a>
+            </div>
+
+            <!-- Sub-Abas -->
+            <div class="flex gap-1 mb-6 bg-white rounded-xl border border-slate-200 p-1">
+                <button id="tab-todos" class="tab-btn flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm" data-tab="todos">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Todos os Processos
+                    <span id="tab-todos-count" class="text-xs bg-white/20 px-2 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tab-consolidados" class="tab-btn flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-50" data-tab="consolidados">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
+                    Consolidados por Cliente
+                    <span id="tab-consolidados-count" class="text-xs bg-slate-200 px-2 py-0.5 rounded-full">0</span>
+                </button>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- TAB: TODOS OS PROCESSOS (conteudo original mantido intacto) -->
+            <!-- ============================================================ -->
+            <div id="view-todos">
+                <!-- Barra de Filtros -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6">
+                    <form id="search-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="md:col-span-2 relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            <input type="text" id="filter-busca"
+                                class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Buscar por nome ou numero do processo...">
+                        </div>
+                        <div>
+                            <select id="filter-status" class="block w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Todos os Status</option>
+                                <option value="EM ANDAMENTO">Em Andamento</option>
+                                <option value="SOBRESTADO">Sobrestado</option>
+                                <option value="JULGADO">Julgado</option>
+                                <option value="ARQUIVADO">Arquivado</option>
+                                <option value="CANCELADO">Cancelado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button type="submit" class="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Lista de Resultados (Tabela) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px]">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold border-b border-slate-100">
+                                <tr>
+                                    <th class="px-6 py-4">Identificacao</th>
+                                    <th class="px-6 py-4 hidden sm:table-cell">Natureza / Tipo</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4 hidden md:table-cell">Entrada</th>
+                                    <th class="px-6 py-4 text-right">Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="processos-list" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                                        <div class="flex flex-col items-center justify-center">
+                                            <svg class="w-8 h-8 animate-spin text-blue-500 mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            <p>Buscando processos...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Feedback de Lista Vazia -->
+                    <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-center">
+                        <div class="bg-slate-50 p-4 rounded-full mb-3">
+                            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-medium text-slate-900">Nenhum processo encontrado</h3>
+                        <p class="text-slate-500 max-w-sm mx-auto mt-1">Tente ajustar os filtros de busca ou cadastre um novo processo.</p>
+                    </div>
+                </div>
+
+                <!-- Contador de Resultados -->
+                <div class="mt-4 text-xs text-slate-400 text-center md:text-left">
+                    Exibindo <span id="results-count" class="font-bold text-slate-600">0</span> processos
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- TAB: PROCESSOS CONSOLIDADOS POR CLIENTE                      -->
+            <!-- ============================================================ -->
+            <div id="view-consolidados" class="hidden">
+                <!-- Busca de clientes -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6">
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <input id="consolidados-busca" type="text" placeholder="Buscar cliente por nome..." class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                        </div>
+                        <div class="flex items-center text-sm text-slate-500">
+                            <span id="consolidados-count">0</span>&nbsp;clientes com processos
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de clientes consolidados -->
+                <div id="consolidados-lista" class="space-y-3">
+                    <div class="text-center py-12 text-slate-400">
+                        <svg class="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <p>Carregando dados...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-20 md:h-0"></div>
+
+        </main>
+    </div>
+
+    <!-- Bottom Navigation Bar (Mobile Only) -->
+    <div class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around py-3 pb-safe z-50">
+        <a href="dashboard.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            <span class="text-[10px] font-medium mt-1">Inicio</span>
+        </a>
+        <a href="processos.html" class="flex flex-col items-center text-blue-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <span class="text-[10px] font-medium mt-1">Processos</span>
+        </a>
+        <a href="novo-processo.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
+            <div class="relative">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <span class="text-[10px] font-medium mt-1">Novo</span>
+        </a>
+        <a href="clientes.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
+            <span class="text-[10px] font-medium mt-1">Clientes</span>
+        </a>
+    </div>
+
+    <!-- Scripts de Infraestrutura -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+
+    <!-- Script da Pagina -->
+    <script src="js/processos.js"></script>
+
+</body>
+</html>
