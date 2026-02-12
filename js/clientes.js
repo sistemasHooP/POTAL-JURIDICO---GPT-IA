@@ -174,31 +174,7 @@
         var cpfInput = document.getElementById('cliente-cpf');
         if (cpfInput) {
             cpfInput.addEventListener('input', function (e) {
-                var v = e.target.value.replace(/\D/g, '');
-                if (v.length <= 11) {
-                    // Mascara CPF
-                    if (v.length > 11) v = v.substring(0, 11);
-                    if (v.length > 9) {
-                        v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-                    } else if (v.length > 6) {
-                        v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-                    } else if (v.length > 3) {
-                        v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-                    }
-                } else {
-                    // Mascara CNPJ
-                    if (v.length > 14) v = v.substring(0, 14);
-                    if (v.length > 12) {
-                        v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
-                    } else if (v.length > 8) {
-                        v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
-                    } else if (v.length > 5) {
-                        v = v.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
-                    } else if (v.length > 2) {
-                        v = v.replace(/(\d{2})(\d{1,3})/, '$1.$2');
-                    }
-                }
-                e.target.value = v;
+                e.target.value = Utils.maskDocumentInput(e.target.value);
             });
         }
 
@@ -369,13 +345,7 @@
         var raw = String(cpf || '');
         var d = raw.replace(/\D/g, '');
         if (!d) return raw || '-';
-        if (d.length === 11) {
-            return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-        }
-        if (d.length === 14) {
-            return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-        }
-        return d;
+        return Utils.formatDocument(d);
     }
 
     function formatarTelefone(telefone) {
@@ -737,7 +707,7 @@
         document.getElementById('detalhe-email').textContent = cliente.email || '-';
         var docDigits = String(cliente.cpf || '').replace(/\D/g, '');
         var docLabel = docDigits.length === 14 ? 'CNPJ: ' : 'CPF: ';
-        document.getElementById('detalhe-cpf').textContent = docLabel + formatarCPF(cliente.cpf);
+        document.getElementById('detalhe-cpf').textContent = docLabel + Utils.formatDocument(cliente.cpf);
         document.getElementById('detalhe-tel').textContent = 'Tel: ' + formatarTelefone(cliente.telefone);
 
         var statusEl = document.getElementById('detalhe-status');

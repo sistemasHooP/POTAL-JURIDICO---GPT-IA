@@ -245,6 +245,7 @@ const API = {
     processos: {
         dashboard: (onResult, silent = false) => API.fetchWithCache('getDashboard', {}, onResult, silent),
         listar: (filtros, onResult, silent = false) => API.fetchWithCache('listarProcessos', filtros, onResult, silent),
+        listarNotificacoesPrazos: (onResult, silent = true) => API.fetchWithCache('getNotificacoesPrazos', {}, onResult, silent),
         detalhar: (idProcesso, onResult) => API.fetchWithCache('getProcessoDetalhe', { id_processo: idProcesso }, onResult),
 
         // Escrita: invalida caches relacionados após sucesso
