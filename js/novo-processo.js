@@ -642,8 +642,8 @@
             document.getElementById('novo-cliente-cpf').focus();
             return;
         }
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            Utils.showToast('Digite um email valido.', 'warning');
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            Utils.showToast('Email inválido. Se preencher, use um email válido.', 'warning');
             document.getElementById('novo-cliente-email').focus();
             return;
         }

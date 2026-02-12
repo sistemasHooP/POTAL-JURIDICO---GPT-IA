@@ -22,17 +22,29 @@
         var btnArrow = document.getElementById('btn-arrow');
         var btnSpinner = document.getElementById('btn-spinner');
 
-        // Mascara de CPF: 000.000.000-00
+        // Mascara de documento: CPF ou CNPJ
         cpfInput.addEventListener('input', function (e) {
             var value = e.target.value.replace(/\D/g, '');
-            if (value.length > 11) value = value.substring(0, 11);
+            if (value.length > 14) value = value.substring(0, 14);
 
-            if (value.length > 9) {
-                value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-            } else if (value.length > 6) {
-                value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-            } else if (value.length > 3) {
-                value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            if (value.length <= 11) {
+                if (value.length > 9) {
+                    value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+                } else if (value.length > 6) {
+                    value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                } else if (value.length > 3) {
+                    value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+                }
+            } else {
+                if (value.length > 12) {
+                    value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+                } else if (value.length > 8) {
+                    value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+                } else if (value.length > 5) {
+                    value = value.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                } else if (value.length > 2) {
+                    value = value.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+                }
             }
 
             e.target.value = value;
@@ -45,15 +57,21 @@
             var cpf = cpfInput.value.replace(/\D/g, '');
 
             // Validacao de tamanho
-            if (cpf.length !== 11) {
-                ClienteUI.showToast('Digite um CPF válido com 11 dígitos.', 'warning');
+            if (cpf.length !== 11 && cpf.length !== 14) {
+                ClienteUI.showToast('Digite um CPF (11) ou CNPJ (14) válido.', 'warning');
                 cpfInput.focus();
                 return;
             }
 
             // Validacao de digitos verificadores
-            if (!ClienteUI.validarCPF(cpf)) {
+            if (cpf.length === 11 && !ClienteUI.validarCPF(cpf)) {
                 ClienteUI.showToast('CPF inválido. Verifique os dígitos informados.', 'warning');
+                cpfInput.focus();
+                return;
+            }
+
+            if (cpf.length === 14 && !ClienteUI.validarCNPJ(cpf)) {
+                ClienteUI.showToast('CNPJ inválido. Verifique os dígitos informados.', 'warning');
                 cpfInput.focus();
                 return;
             }

@@ -163,17 +163,17 @@ var ProcessosService = {
         var emailCliente = String(payload.email_cliente || '').trim().toLowerCase();
         var telefoneCliente = String(payload.telefone_cliente || '').replace(/\D/g, '');
 
-        if (!nomeCliente || !emailCliente) {
-          throw new Error('Cliente não encontrado. Preencha nome e email para cadastrar.');
+        if (!nomeCliente) {
+          throw new Error('Cliente não encontrado. Preencha ao menos o nome para cadastrar.');
         }
 
-        if (!Utils.isValidEmail(emailCliente)) {
+        if (emailCliente && !Utils.isValidEmail(emailCliente)) {
           throw new Error('Email do cliente inválido.');
         }
 
         // Proteção extra: se já houver cliente com mesmo email, vincula nele
-        var clientePorEmail = Database.findBy(CONFIG.SHEET_NAMES.CLIENTES, 'email', emailCliente);
-        if (clientePorEmail && clientePorEmail.length > 0) {
+        var clientePorEmail = emailCliente ? Database.findBy(CONFIG.SHEET_NAMES.CLIENTES, 'email', emailCliente) : [];
+        if (emailCliente && clientePorEmail && clientePorEmail.length > 0) {
           clienteId = clientePorEmail[0].id;
           emailInteressado = emailCliente;
         } else {

@@ -34,9 +34,26 @@ const Auth = {
      */
     redirectIfAuthenticated: function() {
         const token = sessionStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
-        if (token) {
-            Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
+        const userData = sessionStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+
+        // Evita redirecionar com sessão incompleta/corrompida
+        if (!token || !userData) {
+            if (token || userData) {
+                sessionStorage.removeItem(CONFIG.STORAGE_KEYS.TOKEN);
+                sessionStorage.removeItem(CONFIG.STORAGE_KEYS.USER_DATA);
+            }
+            return;
         }
+
+        try {
+            JSON.parse(userData);
+        } catch (e) {
+            sessionStorage.removeItem(CONFIG.STORAGE_KEYS.TOKEN);
+            sessionStorage.removeItem(CONFIG.STORAGE_KEYS.USER_DATA);
+            return;
+        }
+
+        Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
     },
 
     /**
@@ -91,6 +108,41 @@ const Auth = {
      * Atualiza a interface com o nome do usuário logado.
      * Procura por elementos com ID 'user-name-display' e 'user-profile-display'.
      */
+
+    /**
+     * Verifica se existem prazos pendentes e destaca atalhos para o Dashboard.
+     */
+    updateDashboardNotificationHint: function() {
+        try {
+            if (window.location.pathname.endsWith('dashboard.html')) return;
+            if (!window.API || !API.processos || !API.processos.listarNotificacoesPrazos) return;
+
+            API.processos.listarNotificacoesPrazos(function(data) {
+                var total = Array.isArray(data) ? data.length : 0;
+                var links = document.querySelectorAll('a[href="dashboard.html"]');
+
+                links.forEach(function(link) {
+                    var old = link.querySelector('.dashboard-notif-badge');
+                    if (old) old.remove();
+
+                    if (total > 0) {
+                        var badge = document.createElement('span');
+                        badge.className = 'dashboard-notif-badge ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold';
+                        badge.textContent = total > 99 ? '99+' : String(total);
+                        link.appendChild(badge);
+                    }
+                });
+
+                if (total > 0 && !sessionStorage.getItem('rpps_dashboard_notif_seen')) {
+                    Utils.showToast('Você tem ' + total + ' prazo(s). Veja no Dashboard.', 'warning');
+                    sessionStorage.setItem('rpps_dashboard_notif_seen', '1');
+                }
+            }, true).catch(function() {});
+        } catch (e) {
+            console.warn('Falha ao atualizar indicador de notificações do dashboard', e);
+        }
+    },
+
     updateUserInfoUI: function() {
         const user = this.getUser();
         if (user) {
