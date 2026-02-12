@@ -40,6 +40,20 @@ const API = {
         return this.LOADING_PROFILE[action] || this.LOADING_PROFILE.default;
     },
 
+    _syncStatusRefCount: 0,
+
+    _openSyncStatus: function(message) {
+        this._syncStatusRefCount += 1;
+        Utils.showSyncStatus(message);
+    },
+
+    _closeSyncStatus: function() {
+        this._syncStatusRefCount = Math.max(0, this._syncStatusRefCount - 1);
+        if (this._syncStatusRefCount === 0) {
+            Utils.hideSyncStatus();
+        }
+    },
+
     // =========================================================================
     // PRELOAD: Pré-carrega dados de páginas adjacentes em background
     // =========================================================================
@@ -120,7 +134,7 @@ const API = {
         if (useBlockingLoading) {
             Utils.showLoading(loadingProfile.message || 'Carregando...', loadingProfile.icon || 'spinner', loadingProfile.detail || '');
         } else if (useSyncStatus) {
-            Utils.showSyncStatus(loadingProfile.syncMessage || 'Sincronizando dados...');
+            this._openSyncStatus(loadingProfile.syncMessage || 'Sincronizando dados...');
         }
 
         try {

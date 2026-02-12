@@ -257,3 +257,16 @@ body.page-shell main {
         padding-bottom: 5rem;
     }
 }
+
+/* ===== Fase 3: refinamento de feedback visual ===== */
+#global-sync-status {
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+}
+
+#toast-container > div {
+    backdrop-filter: blur(6px);
+}
+
+#toast-container > div p {
+    word-break: break-word;
+}

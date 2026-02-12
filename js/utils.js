@@ -122,7 +122,7 @@ const Utils = {
         if (!status) {
             status = document.createElement('div');
             status.id = 'global-sync-status';
-            status.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-[105] hidden items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 text-white text-xs font-medium shadow-lg border border-white/15 backdrop-blur';
+            status.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-[105] hidden items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 text-white text-xs font-medium shadow-lg border border-white/15 backdrop-blur transition-opacity duration-200';
             status.innerHTML = `
                 <span class="inline-block h-3 w-3 rounded-full border-2 border-white/35 border-t-white animate-spin"></span>
                 <span id="global-sync-status-message"></span>
@@ -130,21 +130,35 @@ const Utils = {
             document.body.appendChild(status);
         }
 
+        status.dataset.visibleAt = String(Date.now());
         const msgEl = document.getElementById('global-sync-status-message');
         if (msgEl) msgEl.textContent = message;
         status.classList.remove('hidden');
         status.classList.add('flex');
+        status.classList.remove('opacity-0');
     },
 
     hideSyncStatus: function() {
         const status = document.getElementById('global-sync-status');
-        if (status) {
+        if (!status) return;
+
+        const visibleAt = Number(status.dataset.visibleAt || Date.now());
+        const elapsed = Date.now() - visibleAt;
+        const minVisibleMs = 500;
+        const hide = function() {
             status.classList.add('hidden');
             status.classList.remove('flex');
+            status.classList.add('opacity-0');
+        };
+
+        if (elapsed >= minVisibleMs) {
+            hide();
+        } else {
+            setTimeout(hide, minVisibleMs - elapsed);
         }
     },
 
-    showToast: function(message, type = 'info') {
+    showToast: function(message, type = 'info', title = '') {
         let container = document.getElementById('toast-container');
         if (!container) {
             container = document.createElement('div');
@@ -153,16 +167,41 @@ const Utils = {
             document.body.appendChild(container);
         }
 
-        const colors = {
-            success: 'bg-green-600 text-white shadow-lg',
-            error: 'bg-red-600 text-white shadow-lg',
-            warning: 'bg-amber-500 text-white shadow-lg',
-            info: 'bg-slate-800 text-white shadow-lg'
+        const variant = {
+            success: {
+                box: 'bg-emerald-600 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7"></path></svg>',
+                title: 'Sucesso'
+            },
+            error: {
+                box: 'bg-red-600 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+                title: 'Erro'
+            },
+            warning: {
+                box: 'bg-amber-500 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 9v2m0 4h.01M10.29 3.86l-7.5 13A2 2 0 004.5 20h15a2 2 0 001.71-3.14l-7.5-13a2 2 0 00-3.42 0z"></path></svg>',
+                title: 'Atenção'
+            },
+            info: {
+                box: 'bg-slate-800 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 16h-1v-4h-1m1-4h.01M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>',
+                title: 'Informação'
+            }
         };
 
+        const v = variant[type] || variant.info;
+        const toastTitle = title || v.title;
+
         const toast = document.createElement('div');
-        toast.className = `pointer-events-auto flex items-center w-full p-4 rounded-lg shadow-xl transform transition-all duration-300 translate-x-full ${colors[type] || colors.info}`;
-        toast.innerHTML = `<span class="font-medium">${message}</span>`;
+        toast.className = `pointer-events-auto flex items-start gap-3 w-full p-4 rounded-lg shadow-xl transform transition-all duration-300 translate-x-full ${v.box}`;
+        toast.innerHTML = `
+            <div class="shrink-0 mt-0.5">${v.icon}</div>
+            <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-wide opacity-90">${toastTitle}</p>
+                <p class="font-medium leading-snug">${message}</p>
+            </div>
+        `;
 
         container.appendChild(toast);
         requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
