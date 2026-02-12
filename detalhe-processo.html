@@ -100,7 +100,7 @@
         .sidebar-action-btn:hover { transform: translateX(2px); }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-24 md:pb-0">
+<body class="page-shell bg-slate-50 min-h-screen pb-24 md:pb-0">
 
     <!-- Navbar Mobile (Topo) -->
     <nav class="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
@@ -399,6 +399,12 @@
                                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                             </div>
                                         </div>
+</div>
+
+
+                                    <div id="mov-tipo-outros-wrap" class="hidden">
+                                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Especificar Tipo de Ação</label>
+                                        <input type="text" id="mov-tipo-outros" maxlength="80" placeholder="Digite o tipo de ação personalizado" class="block w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-300 transition-colors" />
                                     </div>
 
                                     <div class="grid grid-cols-2 gap-3">

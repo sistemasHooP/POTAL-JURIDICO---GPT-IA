@@ -49,6 +49,21 @@ document.addEventListener('DOMContentLoaded', function() {
         formMov.addEventListener('submit', handleMovimentacaoSubmit);
     }
 
+    const tipoSelectInit = document.getElementById('mov-tipo');
+    if (tipoSelectInit) {
+        tipoSelectInit.addEventListener('change', atualizarCampoTipoOutros);
+    }
+    const tipoOutrosInput = document.getElementById('mov-tipo-outros');
+    if (tipoOutrosInput) {
+        tipoOutrosInput.addEventListener('input', function() {
+            const refSelect = document.getElementById('mov-referencia');
+            if (refSelect && refSelect.value && typeof refSelect.onchange === 'function') {
+                refSelect.onchange();
+            }
+        });
+    }
+    atualizarCampoTipoOutros();
+
     const msgLoader = nomeParte
         ? "Abrindo autos de " + decodeURIComponent(nomeParte) + "..."
         : "Abrindo processo jurídico...";
@@ -393,7 +408,7 @@ function populateReferenciaDropdown(movimentacoes, refMap) {
         const tipo = selectedOpt.dataset.tipo;
         const prazo = selectedOpt.dataset.prazo ? Utils.formatDate(selectedOpt.dataset.prazo).split(' ')[0] : '';
         const descricao = selectedOpt.dataset.descricao || '';
-        const tipoResposta = document.getElementById('mov-tipo').value || '(selecione o tipo)';
+        const tipoResposta = getTipoMovimentacaoSelecionado() || '(selecione o tipo)';
 
         infoEl.innerHTML = `
             <div class="mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -415,11 +430,39 @@ function populateReferenciaDropdown(movimentacoes, refMap) {
         const originalOnChange = tipoSelect.onchange;
         tipoSelect.onchange = function(e) {
             if (originalOnChange) originalOnChange.call(this, e);
+            atualizarCampoTipoOutros();
             if (select.value) select.onchange();
         };
     }
 
     wrap.classList.remove('hidden');
+}
+
+function getTipoMovimentacaoSelecionado() {
+    var tipoSelect = document.getElementById('mov-tipo');
+    var tipoOutros = document.getElementById('mov-tipo-outros');
+    var tipoBase = tipoSelect ? String(tipoSelect.value || '').trim() : '';
+
+    if (tipoBase !== 'OUTROS') return tipoBase;
+
+    var custom = tipoOutros ? String(tipoOutros.value || '').trim() : '';
+    return custom;
+}
+
+function atualizarCampoTipoOutros() {
+    var tipoSelect = document.getElementById('mov-tipo');
+    var wrap = document.getElementById('mov-tipo-outros-wrap');
+    var input = document.getElementById('mov-tipo-outros');
+    if (!tipoSelect || !wrap || !input) return;
+
+    if (tipoSelect.value === 'OUTROS') {
+        wrap.classList.remove('hidden');
+        input.setAttribute('required', 'required');
+    } else {
+        wrap.classList.add('hidden');
+        input.removeAttribute('required');
+        input.value = '';
+    }
 }
 
 // =============================================================================
@@ -889,7 +932,7 @@ function createTimelineItem(mov, refMap, movsById) {
 async function handleMovimentacaoSubmit(e) {
     e.preventDefault();
 
-    const tipo = document.getElementById('mov-tipo').value;
+    const tipo = getTipoMovimentacaoSelecionado();
     const descricao = document.getElementById('mov-descricao').value.trim();
     const novoStatus = document.getElementById('mov-novo-status').value;
     const fileInput = document.getElementById('mov-arquivo');
@@ -899,6 +942,13 @@ async function handleMovimentacaoSubmit(e) {
 
     if (!tipo || !descricao) {
         Utils.showToast("Preencha tipo e descrição.", "warning");
+        return;
+    }
+
+    if (document.getElementById('mov-tipo') && document.getElementById('mov-tipo').value === 'OUTROS' && String(tipo || '').trim().length < 3) {
+        Utils.showToast('Em "Outros", descreva um tipo de ação com pelo menos 3 caracteres.', 'warning');
+        var tipoOutrosEl = document.getElementById('mov-tipo-outros');
+        if (tipoOutrosEl) tipoOutrosEl.focus();
         return;
     }
 
