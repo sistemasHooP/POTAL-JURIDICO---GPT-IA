@@ -197,57 +197,36 @@ function renderRecentTable(processos) {
 // SISTEMA DE NOTIFICAÇÕES DE PRAZOS
 // =============================================================================
 function loadNotificacoesPrazos() {
-    // Busca todos os processos para encontrar prazos
-    API.processos.listar({}, function(data, source) {
-        if (!data || !Array.isArray(data)) return;
+    API.processos.listarNotificacoesPrazos(function(data) {
+        if (!data || !Array.isArray(data)) {
+            renderNotificacoes([]);
+            return;
+        }
 
-        var prazos = [];
-        var hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
-        data.forEach(function(proc) {
-            if (!proc.data_prazo) return;
-            // Ignora processos arquivados/cancelados
-            var status = String(proc.status || '').toUpperCase();
-            if (status === 'ARQUIVADO' || status === 'CANCELADO') return;
-
-            var dataPrazo;
-            try {
-                dataPrazo = new Date(proc.data_prazo);
-                if (isNaN(dataPrazo.getTime())) return;
-            } catch(e) { return; }
-
-            dataPrazo.setHours(0, 0, 0, 0);
-
-            var diffMs = dataPrazo.getTime() - hoje.getTime();
-            var diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-            // Mostrar prazos: vencidos (até -30 dias) e próximos (até 30 dias)
-            if (diffDias < -30 || diffDias > 30) return;
-
+        var prazos = data.map(function(proc) {
+            var diffDias = Number(proc.diff_dias || 0);
             var urgencia = 'normal';
             if (diffDias < 0) urgencia = 'vencido';
             else if (diffDias === 0) urgencia = 'hoje';
             else if (diffDias <= 3) urgencia = 'urgente';
             else if (diffDias <= 7) urgencia = 'proximo';
 
-            prazos.push({
+            return {
                 id: proc.id,
                 numero: proc.numero_processo || 'S/N',
                 parte: proc.parte_nome || '-',
                 tipo: proc.tipo || '-',
                 status: proc.status || '-',
-                data_prazo: dataPrazo,
+                data_prazo: proc.data_prazo,
                 diffDias: diffDias,
                 urgencia: urgencia
-            });
+            };
         });
 
-        // Ordena: vencidos primeiro, depois por proximidade
-        prazos.sort(function(a, b) { return a.diffDias - b.diffDias; });
-
         renderNotificacoes(prazos);
-    }, true); // silent
+    }, true).catch(function() {
+        renderNotificacoes([]);
+    });
 }
 
 function renderNotificacoes(prazos) {
