@@ -295,6 +295,33 @@ const ClienteUI = {
         return parseInt(d.charAt(10)) === dig2;
     },
 
+
+    validarCNPJ: function(cnpj) {
+        var d = String(cnpj || '').replace(/\D/g, '');
+        if (d.length !== 14) return false;
+        if (/^(\d){13}$/.test(d)) return false;
+        var t = d.length - 2;
+        var n = d.substring(0, t);
+        var digitos = d.substring(t);
+        var soma = 0, pos = t - 7, i;
+        for (i = t; i >= 1; i--) {
+            soma += parseInt(n.charAt(t - i), 10) * pos--;
+            if (pos < 2) pos = 9;
+        }
+        var res = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+        if (res !== parseInt(digitos.charAt(0), 10)) return false;
+        t++;
+        n = d.substring(0, t);
+        soma = 0;
+        pos = t - 7;
+        for (i = t; i >= 1; i--) {
+            soma += parseInt(n.charAt(t - i), 10) * pos--;
+            if (pos < 2) pos = 9;
+        }
+        res = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+        return res === parseInt(digitos.charAt(1), 10);
+    },
+
     /**
      * Abre arquivo em um modal de visualização.
      * Baixa o arquivo via proxy e exibe em Base64.
