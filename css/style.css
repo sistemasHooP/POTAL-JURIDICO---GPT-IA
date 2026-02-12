@@ -1,10 +1,29 @@
 /* ============================================================================
    ARQUIVO: css/style.css
-   DESCRIÇÃO: Estilos globais + utilitários do Portal Jurídico (PWA)
-   ATUALIZAÇÃO: Spinner de carregamento em botões (.btn-loading)
+   DESCRIÇÃO: Estilos globais + design system visual do Portal Jurídico
    ============================================================================ */
 
-/* Base */
+:root {
+    --app-bg: #f3f6fb;
+    --app-bg-soft: #eef3fb;
+    --card-bg: #ffffff;
+    --card-border: #e2e8f0;
+    --text-strong: #0f172a;
+    --text-medium: #334155;
+    --text-soft: #64748b;
+    --brand-600: #2563eb;
+    --brand-700: #1d4ed8;
+    --accent-indigo: #4f46e5;
+    --success-600: #059669;
+    --warning-600: #d97706;
+    --danger-600: #dc2626;
+    --shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.09);
+    --shadow-lg: 0 18px 42px rgba(15, 23, 42, 0.14);
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+}
+
 * {
     -webkit-tap-highlight-color: transparent;
 }
@@ -18,6 +37,23 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+body.page-shell {
+    background:
+        radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.08), transparent 32%),
+        radial-gradient(circle at 0% 100%, rgba(79, 70, 229, 0.07), transparent 34%),
+        linear-gradient(180deg, #f8fbff 0%, var(--app-bg) 100%);
+    color: var(--text-medium);
+}
+
+body.page-shell main {
+    animation: pageRise .28s ease-out both;
+}
+
+@keyframes pageRise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Scrollbar (Desktop) */
 ::-webkit-scrollbar {
     width: 10px;
@@ -25,16 +61,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: #e9eef8;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #bcc9dd;
     border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #8ea1c0;
 }
 
 /* Safe area (iOS) */
@@ -56,11 +92,109 @@ body {
 .timeline-line::before {
     content: "";
     position: absolute;
-    left: 0.75rem; /* 12px */
+    left: 0.75rem;
     top: 0;
     bottom: 0;
     width: 2px;
-    background: rgb(226 232 240); /* slate-200 */
+    background: rgb(226 232 240);
+}
+
+/* ===== Cartões e superfícies modernas ===== */
+.page-shell .bg-white {
+    border: 1px solid rgba(226, 232, 240, 0.92);
+    box-shadow: var(--shadow-sm);
+}
+
+.page-shell .bg-white:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.page-shell .rounded-xl,
+.page-shell .rounded-2xl {
+    backdrop-filter: saturate(1.03);
+}
+
+/* ===== Navegação lateral / topo ===== */
+.page-shell aside {
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.page-shell nav.bg-slate-900 {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+}
+
+.page-shell nav a,
+.page-shell aside a {
+    transition: all .2s ease;
+}
+
+.page-shell aside a:hover {
+    transform: translateX(2px);
+}
+
+/* ===== Inputs, selects e textarea ===== */
+.page-shell input,
+.page-shell select,
+.page-shell textarea {
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.page-shell input:focus,
+.page-shell select:focus,
+.page-shell textarea:focus {
+    border-color: rgba(37, 99, 235, .55) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .14) !important;
+}
+
+/* ===== Botões ===== */
+.page-shell button,
+.page-shell .btn,
+.page-shell a[class*="bg-"] {
+    transition: transform .12s ease, box-shadow .18s ease, opacity .18s ease;
+}
+
+.page-shell button:active,
+.page-shell .btn:active,
+.page-shell a[class*="bg-"]:active {
+    transform: translateY(1px);
+}
+
+/* ===== Tabelas ===== */
+.page-shell table thead {
+    letter-spacing: .03em;
+}
+
+.page-shell table tbody tr {
+    transition: background-color .16s ease;
+}
+
+/* ===== Badges e status ===== */
+.page-shell .status-pill {
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: .72rem;
+    padding: .28rem .62rem;
+}
+
+/* ===== Feedback visual padronizado ===== */
+#global-loader {
+    background: rgba(5, 11, 24, 0.84) !important;
+    backdrop-filter: blur(4px);
+}
+
+#global-loader > div,
+#cliente-loader > div {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.92));
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
+}
+
+#toast-container > div {
+    border-radius: .85rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(255,255,255,.2);
 }
 
 /* Fade in */
@@ -81,18 +215,12 @@ body {
 
 /* ============================================================================
    BOTÕES COM LOADING (Spinner)
-   - Use em botões que disparam requisições e podem demorar.
-   - Como usar no JS:
-       btn.classList.add('btn-loading');
-       ...
-       btn.classList.remove('btn-loading');
    ============================================================================ */
 
 @keyframes btnSpin {
     to { transform: rotate(360deg); }
 }
 
-/* padrão: spinner branco (botões com fundo azul/escuro) */
 .btn-loading {
     position: relative;
     pointer-events: none;
@@ -113,8 +241,127 @@ body {
     animation: btnSpin 0.8s linear infinite;
 }
 
-/* opção para botões claros (texto escuro) */
 .btn-loading.btn-loading--dark::after {
-    border-color: rgba(15, 23, 42, 0.25);       /* slate-900 com alpha */
+    border-color: rgba(15, 23, 42, 0.25);
     border-top-color: rgba(15, 23, 42, 0.90);
+}
+
+/* Ajustes mobile para leitura */
+@media (max-width: 768px) {
+    .page-shell .text-2xl,
+    .page-shell .text-3xl {
+        letter-spacing: -0.01em;
+    }
+
+    .page-shell main {
+        padding-bottom: 5rem;
+    }
+}
+
+/* ===== Fase 3: refinamento de feedback visual ===== */
+#global-sync-status {
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+}
+
+#toast-container > div {
+    backdrop-filter: blur(6px);
+}
+
+#toast-container > div p {
+    word-break: break-word;
+}
+
+/* ===== Fase 4: redesign realmente visível (PJE moderno) ===== */
+body.page-shell {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.14), transparent 30%),
+        radial-gradient(circle at 90% 0%, rgba(99, 102, 241, 0.16), transparent 34%),
+        linear-gradient(180deg, #eff4ff 0%, #e8eefc 52%, #e4eaf8 100%);
+}
+
+.page-shell aside {
+    background: linear-gradient(180deg, #0f172a 0%, #111827 44%, #1e1b4b 100%) !important;
+    border-right: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.page-shell aside nav a {
+    border: 1px solid transparent;
+    border-radius: 14px;
+}
+
+.page-shell aside nav a:hover {
+    background: rgba(59, 130, 246, 0.18) !important;
+    border-color: rgba(96, 165, 250, 0.35);
+}
+
+.page-shell aside nav a.bg-blue-600\/20 {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.30), rgba(37, 99, 235, 0.18)) !important;
+    border-color: rgba(125, 211, 252, 0.48) !important;
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+}
+
+.page-shell main {
+    padding-top: 1.5rem;
+}
+
+.page-shell main > div,
+.page-shell main > section,
+.page-shell .bg-white {
+    border-radius: 18px !important;
+}
+
+.page-shell .bg-white {
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86)) !important;
+    border: 1px solid rgba(148, 163, 184, 0.28) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+
+.page-shell h1,
+.page-shell h2,
+.page-shell h3 {
+    letter-spacing: -0.02em;
+}
+
+.page-shell table thead {
+    background: linear-gradient(180deg, #f7faff, #eef4ff) !important;
+}
+
+.page-shell table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.06) !important;
+}
+
+.page-shell .status-pill,
+.page-shell [class*='bg-blue-100'][class*='text-blue-800'] {
+    border: 1px solid rgba(96, 165, 250, 0.45);
+}
+
+.page-shell .fixed.bottom-0 {
+    border-top: 1px solid rgba(148, 163, 184, 0.35) !important;
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.84) !important;
+}
+
+@media (max-width: 1024px) {
+    .page-shell main {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+}
+
+.page-shell .kpi-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.page-shell .kpi-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), transparent 40%, rgba(99,102,241,0.08));
+    pointer-events: none;
+}
+
+.page-shell .kpi-card > * {
+    position: relative;
+    z-index: 1;
 }

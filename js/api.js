@@ -22,6 +22,38 @@ const API = {
         buscarClientePorId: 30
     },
 
+    LOADING_PROFILE: {
+        default: { blocking: false, syncMessage: 'Sincronizando com a base jurídica...' },
+        login: { blocking: true, message: 'Validando credenciais...', detail: 'Conectando ao ambiente jurídico.' },
+        verificarToken: { blocking: false, syncMessage: 'Verificando sessão ativa...' },
+        getDashboard: { blocking: false, syncMessage: 'Sincronizando indicadores do painel...' },
+        listarProcessos: { blocking: false, syncMessage: 'Atualizando lista de autos...' },
+        listarClientes: { blocking: false, syncMessage: 'Atualizando cadastro de clientes...' },
+        getProcessoDetalhe: { blocking: true, message: 'Abrindo pasta virtual...', detail: 'Carregando autos e histórico do processo.' },
+        criarProcesso: { blocking: true, message: 'Criando pasta digital...', detail: 'Preparando estrutura do novo processo.' },
+        novaMovimentacao: { blocking: true, message: 'Registrando movimentação...', detail: 'Salvando histórico e notificações.' },
+        uploadArquivo: { blocking: true, message: 'Anexando documento...', detail: 'Enviando arquivo para a pasta virtual.' },
+        downloadArquivo: { blocking: true, message: 'Preparando download...', detail: 'Recuperando arquivo do repositório.' }
+    },
+
+    getLoadingProfile: function(action) {
+        return this.LOADING_PROFILE[action] || this.LOADING_PROFILE.default;
+    },
+
+    _syncStatusRefCount: 0,
+
+    _openSyncStatus: function(message) {
+        this._syncStatusRefCount += 1;
+        Utils.showSyncStatus(message);
+    },
+
+    _closeSyncStatus: function() {
+        this._syncStatusRefCount = Math.max(0, this._syncStatusRefCount - 1);
+        if (this._syncStatusRefCount === 0) {
+            Utils.hideSyncStatus();
+        }
+    },
+
     // =========================================================================
     // PRELOAD: Pré-carrega dados de páginas adjacentes em background
     // =========================================================================
@@ -95,9 +127,14 @@ const API = {
      * @param {boolean} isSilent - Se TRUE, não exibe o Loading na tela (usado para background).
      */
     call: async function(action, data = {}, method = 'POST', isSilent = false) {
-        // 1. Inicia UI de carregamento (apenas se não for silencioso)
-        if (!isSilent) {
-            Utils.showLoading();
+        const loadingProfile = this.getLoadingProfile(action);
+        const useBlockingLoading = !isSilent && !!loadingProfile.blocking;
+        const useSyncStatus = !isSilent && !loadingProfile.blocking;
+
+        if (useBlockingLoading) {
+            Utils.showLoading(loadingProfile.message || 'Carregando...', loadingProfile.icon || 'spinner', loadingProfile.detail || '');
+        } else if (useSyncStatus) {
+            this._openSyncStatus(loadingProfile.syncMessage || 'Sincronizando dados...');
         }
 
         try {
@@ -179,9 +216,11 @@ const API = {
             throw error; // Repassa o erro para quem chamou poder tratar
 
         } finally {
-            // 10. Remove bloqueio de tela
-            if (!isSilent) {
+            if (useBlockingLoading) {
                 Utils.hideLoading();
+            }
+            if (useSyncStatus) {
+                Utils.hideSyncStatus();
             }
         }
     },
@@ -245,6 +284,7 @@ const API = {
     processos: {
         dashboard: (onResult, silent = false) => API.fetchWithCache('getDashboard', {}, onResult, silent),
         listar: (filtros, onResult, silent = false) => API.fetchWithCache('listarProcessos', filtros, onResult, silent),
+        listarNotificacoesPrazos: (onResult, silent = true) => API.fetchWithCache('getNotificacoesPrazos', {}, onResult, silent),
         detalhar: (idProcesso, onResult) => API.fetchWithCache('getProcessoDetalhe', { id_processo: idProcesso }, onResult),
 
         // Escrita: invalida caches relacionados após sucesso
