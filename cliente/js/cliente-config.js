@@ -8,7 +8,7 @@
 const CONFIG_CLIENTE = {
     // URL da API (mesma do sistema principal)
     // IMPORTANTE: Substitua pela URL da sua implantação do Google Apps Script
-    API_URL: "https://script.google.com/macros/s/AKfycbysNj8BfIlGqNFkSV8tJ2pPjWD3Xi0UFVBBfJPQnHqd3t4h5RtqzQK3DgxzJXtdPLks/exec",
+    API_URL: "https://script.google.com/macros/s/AKfycbwi-M_wVyhadUQEySSFyQRxD66Xv6pACGQUcArMJLwxGt0aGlAACBGCJDTp4_HX7Lpj/exec",
 
     // Nome do aplicativo
     APP_NAME: "Acompanhamento Processual",
@@ -48,3 +48,4 @@ Object.freeze(CONFIG_CLIENTE);
 Object.freeze(CONFIG_CLIENTE.STORAGE_KEYS);
 
 Object.freeze(CONFIG_CLIENTE.PAGES);
+
