@@ -3,7 +3,7 @@
  * ARQUIVO: AdvogadoService.gs
  * DESCRIÇÃO: Gerenciamento de advogados - CRUD e atribuição de processos.
  * VERSÃO: 1.0 - Sistema de permissões por advogado
- * AUTOR: Sistema RPPS Jurídico
+ * AUTOR: Sistema RPPS Jurídico.
  * ============================================================================
  */
 
@@ -303,3 +303,4 @@ var AdvogadoService = {
     });
   }
 };
+
