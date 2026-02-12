@@ -81,10 +81,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 Utils.hideLoading();
                 Utils.showToast("Login realizado com sucesso!", "success");
 
-                // Redireciona após breve delay para garantir que a sessão foi salva
+                // Redireciona após breve delay para garantir persistência da sessão
                 setTimeout(function() {
-                    Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
-                }, 150);
+                    var token = sessionStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+                    var userData = sessionStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+                    if (token && userData) {
+                        Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
+                    } else {
+                        loginEmAndamento = false;
+                        if (btnSubmit) {
+                            btnSubmit.disabled = false;
+                            btnSubmit.classList.remove('opacity-60', 'cursor-not-allowed');
+                        }
+                        emailInput.readOnly = false;
+                        senhaInput.readOnly = false;
+                        Utils.showToast('Não foi possível abrir a sessão. Tente novamente.', 'error');
+                    }
+                }, 350);
 
             } catch (error) {
                 console.error("Falha no login:", error);
