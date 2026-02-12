@@ -270,3 +270,98 @@ body.page-shell main {
 #toast-container > div p {
     word-break: break-word;
 }
+
+/* ===== Fase 4: redesign realmente visível (PJE moderno) ===== */
+body.page-shell {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.14), transparent 30%),
+        radial-gradient(circle at 90% 0%, rgba(99, 102, 241, 0.16), transparent 34%),
+        linear-gradient(180deg, #eff4ff 0%, #e8eefc 52%, #e4eaf8 100%);
+}
+
+.page-shell aside {
+    background: linear-gradient(180deg, #0f172a 0%, #111827 44%, #1e1b4b 100%) !important;
+    border-right: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.page-shell aside nav a {
+    border: 1px solid transparent;
+    border-radius: 14px;
+}
+
+.page-shell aside nav a:hover {
+    background: rgba(59, 130, 246, 0.18) !important;
+    border-color: rgba(96, 165, 250, 0.35);
+}
+
+.page-shell aside nav a.bg-blue-600\/20 {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.30), rgba(37, 99, 235, 0.18)) !important;
+    border-color: rgba(125, 211, 252, 0.48) !important;
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+}
+
+.page-shell main {
+    padding-top: 1.5rem;
+}
+
+.page-shell main > div,
+.page-shell main > section,
+.page-shell .bg-white {
+    border-radius: 18px !important;
+}
+
+.page-shell .bg-white {
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86)) !important;
+    border: 1px solid rgba(148, 163, 184, 0.28) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+
+.page-shell h1,
+.page-shell h2,
+.page-shell h3 {
+    letter-spacing: -0.02em;
+}
+
+.page-shell table thead {
+    background: linear-gradient(180deg, #f7faff, #eef4ff) !important;
+}
+
+.page-shell table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.06) !important;
+}
+
+.page-shell .status-pill,
+.page-shell [class*='bg-blue-100'][class*='text-blue-800'] {
+    border: 1px solid rgba(96, 165, 250, 0.45);
+}
+
+.page-shell .fixed.bottom-0 {
+    border-top: 1px solid rgba(148, 163, 184, 0.35) !important;
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.84) !important;
+}
+
+@media (max-width: 1024px) {
+    .page-shell main {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+}
+
+.page-shell .kpi-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.page-shell .kpi-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), transparent 40%, rgba(99,102,241,0.08));
+    pointer-events: none;
+}
+
+.page-shell .kpi-card > * {
+    position: relative;
+    z-index: 1;
+}
