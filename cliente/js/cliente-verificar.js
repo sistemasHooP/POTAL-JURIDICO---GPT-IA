@@ -15,7 +15,7 @@
         // Verifica se tem CPF salvo
         var cpf = ClienteAuth.getTempCPF();
         if (!cpf) {
-            ClienteUI.showToast('Sessão expirada. Digite seu CPF novamente.', 'warning');
+            ClienteUI.showToast('Sessão expirada. Digite seu CPF/CNPJ novamente.', 'warning');
             setTimeout(function () {
                 ClienteUI.navigateTo(CONFIG_CLIENTE.PAGES.LOGIN);
             }, 1500);
