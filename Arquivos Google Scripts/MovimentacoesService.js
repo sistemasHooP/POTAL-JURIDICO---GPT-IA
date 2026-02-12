@@ -106,27 +106,36 @@ var MovimentacoesService = {
 
     // Notificação por e-mail (respeita preferência do cliente)
     var emailInteressado = String(processo.email_interessado || '').trim().toLowerCase();
-    if (emailInteressado && Utils.isValidEmail(emailInteressado)) {
-      // Verifica se o cliente desativou notificações
-      var notificacoesAtivas = true;
-      if (processo.cliente_id) {
-        try {
-          var clienteNotif = Database.findById(CONFIG.SHEET_NAMES.CLIENTES, processo.cliente_id);
-          if (clienteNotif && String(clienteNotif.notificacoes_ativas || '').toUpperCase() === 'NAO') {
-            notificacoesAtivas = false;
-            Logger.log('[MovimentacoesService] Notificação desativada para cliente ID: ' + processo.cliente_id);
-          }
-        } catch (clienteErr) {
-          Logger.log('[MovimentacoesService] Erro ao verificar preferência de notificação: ' + clienteErr);
-        }
-      }
+    var notificacoesAtivas = true;
 
-      if (notificacoesAtivas) {
-        try {
-          this._enviarEmailNotificacao(processo, novaMov, payload.data_prazo);
-        } catch (emailError) {
-          Logger.log('[MovimentacoesService] Erro ao enviar email: ' + emailError);
+    if (processo.cliente_id) {
+      try {
+        var clienteNotif = Database.findById(CONFIG.SHEET_NAMES.CLIENTES, processo.cliente_id);
+
+        if (clienteNotif && String(clienteNotif.notificacoes_ativas || '').toUpperCase() === 'NAO') {
+          notificacoesAtivas = false;
+          Logger.log('[MovimentacoesService] Notificação desativada para cliente ID: ' + processo.cliente_id);
         }
+
+        // Fallback: se o processo não tiver e-mail, usa o e-mail atual do cliente
+        if ((!emailInteressado || !Utils.isValidEmail(emailInteressado)) && clienteNotif && clienteNotif.email) {
+          var emailClienteAtual = String(clienteNotif.email || '').trim().toLowerCase();
+          if (Utils.isValidEmail(emailClienteAtual)) {
+            emailInteressado = emailClienteAtual;
+            Database.update(CONFIG.SHEET_NAMES.PROCESSOS, processo.id, { email_interessado: emailClienteAtual });
+            processo.email_interessado = emailClienteAtual;
+          }
+        }
+      } catch (clienteErr) {
+        Logger.log('[MovimentacoesService] Erro ao verificar preferência/email do cliente: ' + clienteErr);
+      }
+    }
+
+    if (notificacoesAtivas && emailInteressado && Utils.isValidEmail(emailInteressado)) {
+      try {
+        this._enviarEmailNotificacao(processo, novaMov, payload.data_prazo);
+      } catch (emailError) {
+        Logger.log('[MovimentacoesService] Erro ao enviar email: ' + emailError);
       }
     }
 

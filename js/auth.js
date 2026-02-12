@@ -164,6 +164,8 @@ const Auth = {
                     el.classList.remove('flex');
                 }
             });
+
+            this.updateDashboardNotificationHint();
         }
     }
 };
