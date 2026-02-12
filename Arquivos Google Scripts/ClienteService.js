@@ -12,10 +12,10 @@ var ClienteService = {
    * Solicita código de acesso via email (6 dígitos)
    */
   solicitarCodigo: function(payload) {
-    var cpf = Utils.normalizarCPF(payload.cpf);
+    var cpf = Utils.normalizarDocumento(payload.cpf);
 
-    if (!cpf || cpf.length !== 11) {
-      throw new Error('CPF inválido. Informe 11 dígitos.');
+    if (!cpf || (cpf.length !== 11 && cpf.length !== 14)) {
+      throw new Error('CPF/CNPJ inválido. Informe 11 ou 14 dígitos.');
     }
 
     // Rate limit
@@ -29,7 +29,7 @@ var ClienteService = {
 
     if (!clientes || clientes.length === 0) {
       Utils.logAction('SISTEMA', ENUMS.ACOES_LOG.LOGIN_CLIENTE_FALHA,
-        'CPF não cadastrado: ' + Utils.maskCPF(cpf));
+        'Documento não cadastrado: ' + Utils.maskDocumento(cpf));
       throw new Error('Cliente não encontrado. Verifique o CPF informado.');
     }
 
@@ -56,10 +56,14 @@ var ClienteService = {
     });
 
     // Envia email
+    if (!cliente.email || !Utils.isValidEmail(cliente.email)) {
+      throw new Error('Este cadastro não possui e-mail válido para envio do código. Solicite atualização no escritório.');
+    }
+
     this._enviarEmailCodigo(cliente.email, cliente.nome_completo, codigo);
 
     Utils.logAction(cliente.email, ENUMS.ACOES_LOG.ENVIAR_CODIGO_OTP,
-      'Código enviado para: ' + Utils.maskCPF(cpf));
+      'Código enviado para: ' + Utils.maskDocumento(cpf));
 
     return {
       mensagem: 'Código enviado com sucesso!',
@@ -71,11 +75,11 @@ var ClienteService = {
    * Valida o código digitado e retorna token
    */
   validarCodigo: function(payload) {
-    var cpf = Utils.normalizarCPF(payload.cpf);
+    var cpf = Utils.normalizarDocumento(payload.cpf);
     var codigoDigitado = String(payload.codigo || '').trim();
 
     if (!cpf || !codigoDigitado) {
-      throw new Error('CPF e código são obrigatórios.');
+      throw new Error('Documento (CPF/CNPJ) e código são obrigatórios.');
     }
 
     // Busca cliente
@@ -330,7 +334,7 @@ var ClienteService = {
       throw new Error('CNPJ inválido (dígitos verificadores incorretos).');
     }
 
-    if (!email || !Utils.isValidEmail(email)) {
+    if (email && !Utils.isValidEmail(email)) {
       throw new Error('Email inválido.');
     }
 
@@ -340,10 +344,12 @@ var ClienteService = {
       throw new Error('Já existe um cliente cadastrado com este CPF/CNPJ.');
     }
 
-    // Verifica duplicidade de email
-    var clientesPorEmail = Database.findBy(CONFIG.SHEET_NAMES.CLIENTES, 'email', email);
-    if (clientesPorEmail && clientesPorEmail.length > 0) {
-      throw new Error('Já existe um cliente cadastrado com este email.');
+    // Verifica duplicidade de email (apenas quando informado)
+    if (email) {
+      var clientesPorEmail = Database.findBy(CONFIG.SHEET_NAMES.CLIENTES, 'email', email);
+      if (clientesPorEmail && clientesPorEmail.length > 0) {
+        throw new Error('Já existe um cliente cadastrado com este email.');
+      }
     }
 
     // Cria cliente

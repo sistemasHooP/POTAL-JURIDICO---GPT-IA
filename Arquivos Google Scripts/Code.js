@@ -112,9 +112,9 @@ function _routeAction(payload) {
 
     // Clientes
     case 'buscarClientePorCPF':
-      var cpfBusca = Utils.normalizarCPF(payload.cpf);
-      if (!cpfBusca) {
-        throw new Error('CPF inválido.');
+      var cpfBusca = Utils.normalizarDocumento(payload.cpf);
+      if (!cpfBusca || (cpfBusca.length !== 11 && cpfBusca.length !== 14)) {
+        throw new Error('CPF/CNPJ inválido.');
       }
 
       var clienteEncontrado = ClienteService.buscarPorCPF(cpfBusca);
@@ -168,6 +168,9 @@ function _routeAction(payload) {
 
     case 'getDashboard':
       return ProcessosService.getDashboardStats(payload);
+
+    case 'getNotificacoesPrazos':
+      return ProcessosService.getNotificacoesPrazos(payload);
 
     case 'salvarNotasProcesso':
       return ProcessosService.salvarNotas(payload);
