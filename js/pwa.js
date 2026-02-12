@@ -16,7 +16,13 @@ let refreshing = false;
 const isLoginPage = (function () {
   try {
     const path = window.location.pathname || '';
-    return path === '/' || path.endsWith('/index.html');
+    const lastSegment = path.split('/').pop();
+
+    // cobre:
+    // - domínio raiz: /
+    // - GitHub Pages em subpasta: /repo/
+    // - acesso direto: /index.html ou /repo/index.html
+    return lastSegment === '' || lastSegment === 'index.html';
   } catch (e) {
     return false;
   }
