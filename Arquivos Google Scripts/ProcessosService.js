@@ -503,8 +503,32 @@ var ProcessosService = {
       else if (st === ENUMS.STATUS_PROCESSO.CANCELADO) stats.cancelado++;
     });
 
+    // Últimas atualizações: considera a data mais recente entre criação do processo
+    // e última movimentação registrada no processo.
+    var movs = Database.read(CONFIG.SHEET_NAMES.MOVIMENTACOES);
+    var ultimaMovPorProcesso = {};
+
+    movs.forEach(function(mov) {
+      var procId = String(mov.id_processo || '').trim();
+      if (!procId) return;
+
+      var dtMov = new Date(mov.data_movimentacao || '');
+      var tsMov = isNaN(dtMov.getTime()) ? 0 : dtMov.getTime();
+      if (!tsMov) return;
+
+      if (!ultimaMovPorProcesso[procId] || tsMov > ultimaMovPorProcesso[procId]) {
+        ultimaMovPorProcesso[procId] = tsMov;
+      }
+    });
+
     var sorted = processos.slice().sort(function(a, b) {
-      return new Date(b.created_at) - new Date(a.created_at);
+      var aCreated = new Date(a.created_at || '').getTime() || 0;
+      var bCreated = new Date(b.created_at || '').getTime() || 0;
+
+      var aTs = Math.max(aCreated, Number(ultimaMovPorProcesso[String(a.id || '').trim()] || 0));
+      var bTs = Math.max(bCreated, Number(ultimaMovPorProcesso[String(b.id || '').trim()] || 0));
+
+      return bTs - aTs;
     });
 
     stats.recente = this._enriquecerProcessos(sorted.slice(0, 5));
