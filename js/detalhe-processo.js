@@ -14,6 +14,10 @@ let currentProcessData = null;
 let currentMovimentacoes = []; // Lista de movimentações para popular dropdown
 let localReferences = {}; // Fallback temporário p/ UI otimista (2s). Dados reais vêm da API/banco.
 
+function isMovimentacaoCancelada(mov) {
+    return !!(mov && mov.cancelado_em);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
 
     if (!Auth.protectRoute()) return;
@@ -47,6 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const formMov = document.getElementById('form-movimentacao');
     if (formMov) {
         formMov.addEventListener('submit', handleMovimentacaoSubmit);
+    }
+
+    const btnEtiquetas = document.getElementById('btn-editar-etiquetas');
+    if (btnEtiquetas) {
+        btnEtiquetas.addEventListener('click', editarEtiquetasProcesso);
     }
 
     const tipoSelectInit = document.getElementById('mov-tipo');
@@ -86,6 +95,7 @@ function buildReferenceMap(movimentacoes) {
     if (!movimentacoes) return { respondidoPor, idsRespondidos };
 
     movimentacoes.forEach(mov => {
+        if (isMovimentacaoCancelada(mov)) return;
         const refId = mov.mov_referencia_id;
         if (refId) {
             respondidoPor[String(refId)] = {
@@ -240,7 +250,7 @@ function loadProcessoDetalhe(id) {
         if (elData) elData.textContent = Utils.formatDate(p.data_entrada);
 
         const elCriador = document.getElementById('proc-criador');
-        if (elCriador) elCriador.textContent = p.criado_por ? p.criado_por.split('@')[0] : '-';
+        if (elCriador) elCriador.textContent = p.responsavel_nome || (p.criado_por ? p.criado_por.split('@')[0] : '-')
 
         renderClienteInfo(p);
 
@@ -351,6 +361,7 @@ function populateReferenciaDropdown(movimentacoes, refMap) {
 
     // Filtra: movimentações que têm prazo E que NÃO foram respondidas
     const pendentes = movimentacoes.filter(m => {
+        if (isMovimentacaoCancelada(m)) return false;
         if (!m.data_prazo || !m.id) return false;
         return !refMap.idsRespondidos.has(String(m.id));
     });
@@ -689,7 +700,11 @@ function updateStatusUI(status) {
         statusEl.className = `px-4 py-2 text-base font-bold rounded-lg border shadow-sm flex items-center gap-2 uppercase tracking-wide ${Utils.getStatusClass(status)}`;
     }
     const statusDescEl = document.getElementById('proc-status-desc');
-    if (statusDescEl) statusDescEl.textContent = Utils.getStatusLabel(status);
+    if (statusDescEl) {
+        var etiquetas = currentProcessData && currentProcessData.processo ? currentProcessData.processo.etiquetas : [];
+        var textoEtiquetas = Array.isArray(etiquetas) && etiquetas.length ? ' | Etiquetas: ' + etiquetas.join(', ') : '';
+        statusDescEl.textContent = Utils.getStatusLabel(status) + textoEtiquetas;
+    }
 }
 
 // =============================================================================
@@ -768,7 +783,8 @@ function renderTimeline(movimentacoes, refMap) {
 }
 
 function createTimelineItem(mov, refMap, movsById) {
-    const tipo = mov.tipo.toUpperCase();
+    const tipo = String(mov.tipo || '').toUpperCase();
+    const movCancelada = isMovimentacaoCancelada(mov);
     let iconHtml = `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
     let bgIcon = "bg-blue-100";
     let borderIcon = "border-white";
@@ -786,7 +802,7 @@ function createTimelineItem(mov, refMap, movsById) {
 
     // ---- PRAZO BADGE ----
     let prazoHtml = "";
-    if (mov.data_prazo) {
+    if (mov.data_prazo && !movCancelada) {
         const prazoFmt = Utils.formatDate(mov.data_prazo).split(' ')[0];
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
@@ -895,6 +911,18 @@ function createTimelineItem(mov, refMap, movsById) {
     const item = document.createElement('div');
     item.className = "relative pl-12 group animate-fade-in";
 
+    const canManageMov = !!(mov.id && Auth.getUser && Auth.getUser());
+    const acoesMovHtml = canManageMov ? (movCancelada
+        ? `<span class="inline-flex items-center px-2 py-1 text-[10px] font-bold rounded border bg-red-50 text-red-600 border-red-200">Cancelada</span>`
+        : `<div class="flex items-center gap-1.5"><button type="button" data-action="editar-mov" data-mov-id="${Utils.escapeHtml(mov.id || '')}" class="px-2 py-1 text-[10px] font-bold rounded border bg-slate-50 text-slate-600 hover:bg-slate-100">Editar</button><button type="button" data-action="cancelar-mov" data-mov-id="${Utils.escapeHtml(mov.id || '')}" class="px-2 py-1 text-[10px] font-bold rounded border bg-red-50 text-red-600 border-red-200 hover:bg-red-100">Cancelar</button></div>`)
+        : '';
+
+    const badgeCancelamento = movCancelada
+        ? `<div class="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700"><strong>Movimentação cancelada</strong>${mov.cancelado_motivo ? ': ' + Utils.escapeHtml(mov.cancelado_motivo) : ''}</div>`
+        : '';
+    const classeTituloCancelada = movCancelada ? 'line-through text-slate-400' : 'text-slate-800';
+    const classeDescricaoCancelada = movCancelada ? 'line-through text-slate-400' : 'text-slate-600';
+
     item.innerHTML = `
         <div class="absolute left-0 top-0 w-12 h-12 rounded-full border-4 ${borderIcon} shadow-sm z-10 flex items-center justify-center ${bgIcon}">
             ${iconHtml}
@@ -902,7 +930,7 @@ function createTimelineItem(mov, refMap, movsById) {
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-200 transition-colors relative">
             <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h4 class="font-bold text-slate-800 text-base">${mov.tipo}</h4>
+                    <h4 class="font-bold ${classeTituloCancelada} text-base">${Utils.escapeHtml(mov.tipo || '-')}</h4>
                     <span class="text-xs text-slate-400 font-medium flex items-center gap-1 mt-1">
                         <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] font-bold border border-slate-200" title="${mov.usuario_responsavel}">
                             ${autor}
@@ -910,15 +938,17 @@ function createTimelineItem(mov, refMap, movsById) {
                         ${emailAutor}
                     </span>
                 </div>
-                <span class="text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">${Utils.formatDate(mov.data_movimentacao)}</span>
+                <div class="flex items-center gap-2"><span class="text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">${Utils.formatDate(mov.data_movimentacao)}</span>${acoesMovHtml}</div>
             </div>
 
             ${referenciaHtml}
             ${prazoHtml}
 
-            <div class="text-sm text-slate-600 leading-relaxed break-words mt-2">
+            <div class="text-sm ${classeDescricaoCancelada} leading-relaxed break-words mt-2">
                 ${Utils.escapeHtml(mov.descricao).replace(/\n/g, '<br>')}
             </div>
+
+            ${badgeCancelamento}
 
             ${anexoHtml}
         </div>
@@ -1161,7 +1191,7 @@ window.exportarRelatorio = function() {
 
     movsOrdenadas.forEach((mov, idx) => {
         let prazoStr = '';
-        if (mov.data_prazo) {
+        if (mov.data_prazo && !movCancelada) {
             const foiRespondido = mov.id && refMap.idsRespondidos.has(String(mov.id));
             if (foiRespondido) {
                 const resp = refMap.respondidoPor[String(mov.id)];
@@ -1529,6 +1559,114 @@ document.addEventListener('click', function(e) {
         section.classList.add('hidden');
     }
 });
+
+
+
+async function editarMovimentacao(movId) {
+    var mov = (currentMovimentacoes || []).find(function(m){ return String(m.id || '') === String(movId || ''); });
+    if (!mov) return Utils.showToast('Movimentação não encontrada.', 'error');
+    if (isMovimentacaoCancelada(mov)) return Utils.showToast('Movimentação cancelada não pode ser editada.', 'warning');
+
+    var novoTipo = window.prompt('Editar tipo da movimentação:', mov.tipo || '');
+    if (novoTipo === null) return;
+    novoTipo = String(novoTipo || '').trim();
+    if (!novoTipo) return Utils.showToast('Tipo é obrigatório.', 'warning');
+
+    var novaDescricao = window.prompt('Editar descrição da movimentação:', mov.descricao || '');
+    if (novaDescricao === null) return;
+    novaDescricao = String(novaDescricao || '').trim();
+    if (!novaDescricao) return Utils.showToast('Descrição é obrigatória.', 'warning');
+
+    var prazoAtual = mov.data_prazo ? Utils.formatDate(mov.data_prazo).split(' ')[0] : '';
+    var novoPrazo = window.prompt('Editar prazo (DD/MM/AAAA) ou deixe em branco para limpar:', prazoAtual);
+    if (novoPrazo === null) return;
+
+    var dataPrazo = '';
+    if (novoPrazo && String(novoPrazo).trim()) {
+        var partes = String(novoPrazo).trim().split('/');
+        if (partes.length !== 3) return Utils.showToast('Data inválida. Use DD/MM/AAAA.', 'warning');
+        dataPrazo = partes[2] + '-' + partes[1].padStart(2, '0') + '-' + partes[0].padStart(2, '0');
+    }
+
+    try {
+        await API.movimentacoes.editar({
+            id_movimentacao: movId,
+            tipo: novoTipo,
+            descricao: novaDescricao,
+            data_prazo: dataPrazo
+        });
+        Utils.showToast('Movimentação atualizada.', 'success');
+        loadProcessoDetalhe(currentProcessId);
+    } catch (e) {
+        console.error(e);
+        Utils.showToast(e.message || 'Erro ao editar movimentação.', 'error');
+    }
+}
+
+async function cancelarMovimentacao(movId) {
+    var mov = (currentMovimentacoes || []).find(function(m){ return String(m.id || '') === String(movId || ''); });
+    if (!mov) return Utils.showToast('Movimentação não encontrada.', 'error');
+    if (isMovimentacaoCancelada(mov)) return Utils.showToast('Movimentação já cancelada.', 'warning');
+
+    var motivo = window.prompt('Informe o motivo do cancelamento:');
+    if (motivo === null) return;
+
+    try {
+        await API.movimentacoes.cancelar({
+            id_movimentacao: movId,
+            motivo: String(motivo || '').trim()
+        });
+        Utils.showToast('Movimentação cancelada.', 'success');
+        loadProcessoDetalhe(currentProcessId);
+    } catch (e) {
+        console.error(e);
+        Utils.showToast(e.message || 'Erro ao cancelar movimentação.', 'error');
+    }
+}
+
+document.addEventListener('click', function(ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-action]') : null;
+    if (!btn) return;
+
+    var action = btn.getAttribute('data-action');
+    var movId = btn.getAttribute('data-mov-id');
+    if (!movId) return;
+
+    if (action === 'editar-mov') {
+        ev.preventDefault();
+        editarMovimentacao(movId);
+    } else if (action === 'cancelar-mov') {
+        ev.preventDefault();
+        cancelarMovimentacao(movId);
+    }
+});
+
+
+
+async function editarEtiquetasProcesso() {
+    if (!currentProcessData || !currentProcessData.processo) return;
+
+    var processo = currentProcessData.processo;
+    var atual = Array.isArray(processo.etiquetas) ? processo.etiquetas.join(', ') : String(processo.etiquetas || '');
+    var valor = window.prompt('Informe as etiquetas separadas por vírgula:', atual);
+    if (valor === null) return;
+
+    try {
+        var result = await API.processosAdmin.salvarEtiquetas({
+            id_processo: processo.id,
+            etiquetas: valor
+        });
+
+        if (result && result.processo) {
+            currentProcessData.processo = result.processo;
+            updateStatusUI(currentProcessData.processo.status);
+        }
+        Utils.showToast('Etiquetas atualizadas.', 'success');
+    } catch (err) {
+        console.error(err);
+        Utils.showToast(err.message || 'Erro ao atualizar etiquetas.', 'error');
+    }
+}
 
 // =============================================================================
 // AUTO-REFRESH - Polling silencioso para sincronização multi-usuário
