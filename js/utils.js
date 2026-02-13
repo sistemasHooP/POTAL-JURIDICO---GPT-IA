@@ -87,20 +87,38 @@ const Utils = {
             loader.id = 'global-loader';
             loader.className = 'fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm transition-opacity duration-300';
 
-            loader.innerHTML = `
-                <div class="flex flex-col items-center p-8 max-w-lg">
-                    <div id="loader-icon">${selectedIcon}</div>
-                    <p id="loader-message" class="text-white font-semibold text-lg tracking-wide text-center">${message}</p>
-                    <p id="loader-detail" class="text-slate-300 text-sm mt-1 text-center">${subtitle}</p>
-                    <p class="text-slate-400 text-xs mt-2 animate-pulse">Aguarde um instante...</p>
-                </div>
-            `;
+            const content = document.createElement('div');
+            content.className = 'flex flex-col items-center p-8 max-w-lg';
+
+            const iconEl = document.createElement('div');
+            iconEl.id = 'loader-icon';
+            iconEl.innerHTML = selectedIcon;
+
+            const msgEl = document.createElement('p');
+            msgEl.id = 'loader-message';
+            msgEl.className = 'text-white font-semibold text-lg tracking-wide text-center';
+            msgEl.textContent = String(message);
+
+            const detailEl = document.createElement('p');
+            detailEl.id = 'loader-detail';
+            detailEl.className = 'text-slate-300 text-sm mt-1 text-center';
+            detailEl.textContent = subtitle;
+
+            const hintEl = document.createElement('p');
+            hintEl.className = 'text-slate-400 text-xs mt-2 animate-pulse';
+            hintEl.textContent = 'Aguarde um instante...';
+
+            content.appendChild(iconEl);
+            content.appendChild(msgEl);
+            content.appendChild(detailEl);
+            content.appendChild(hintEl);
+            loader.appendChild(content);
             document.body.appendChild(loader);
         } else {
             const msgEl = document.getElementById('loader-message');
             const detailEl = document.getElementById('loader-detail');
             const iconEl = document.getElementById('loader-icon');
-            if (msgEl) msgEl.textContent = message;
+            if (msgEl) msgEl.textContent = String(message);
             if (detailEl) detailEl.textContent = subtitle;
             if (iconEl) iconEl.innerHTML = selectedIcon;
         }
@@ -195,13 +213,26 @@ const Utils = {
 
         const toast = document.createElement('div');
         toast.className = `pointer-events-auto flex items-start gap-3 w-full p-4 rounded-lg shadow-xl transform transition-all duration-300 translate-x-full ${v.box}`;
-        toast.innerHTML = `
-            <div class="shrink-0 mt-0.5">${v.icon}</div>
-            <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wide opacity-90">${toastTitle}</p>
-                <p class="font-medium leading-snug">${message}</p>
-            </div>
-        `;
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'shrink-0 mt-0.5';
+        iconWrap.innerHTML = v.icon;
+
+        const content = document.createElement('div');
+        content.className = 'min-w-0';
+
+        const titleEl = document.createElement('p');
+        titleEl.className = 'text-xs font-semibold uppercase tracking-wide opacity-90';
+        titleEl.textContent = String(toastTitle);
+
+        const messageEl = document.createElement('p');
+        messageEl.className = 'font-medium leading-snug';
+        messageEl.textContent = String(message);
+
+        content.appendChild(titleEl);
+        content.appendChild(messageEl);
+        toast.appendChild(iconWrap);
+        toast.appendChild(content);
 
         container.appendChild(toast);
         requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
