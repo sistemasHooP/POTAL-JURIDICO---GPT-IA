@@ -67,7 +67,7 @@ var ProcessosService = {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    return resultado;
+    return this._enriquecerProcessos(resultado);
   },
 
   /**
@@ -222,8 +222,10 @@ var ProcessosService = {
       id_pasta_drive: infoPasta.id,
       link_pasta: infoPasta.url,
       criado_por: auth.user.email,
+      advogado_id: String(payload.advogado_id || '').trim(),
       descricao: String(payload.descricao || '').trim(),
-      data_prazo: ''
+      data_prazo: '',
+      etiquetas: this._normalizarEtiquetasTexto(payload.etiquetas || '')
     };
 
     var processoSalvo = Database.create(CONFIG.SHEET_NAMES.PROCESSOS, novoProcesso);
@@ -245,7 +247,42 @@ var ProcessosService = {
 
     Utils.logAction(auth.user.email, ENUMS.ACOES_LOG.CRIAR_PROCESSO, detalhesLog);
 
-    return processoSalvo;
+    return this._enriquecerProcesso(processoSalvo);
+  },
+
+  /**
+   * Salva etiquetas/lembretes do processo.
+   * @param {Object} payload - { id_processo, etiquetas, token }
+   */
+  salvarEtiquetas: function(payload) {
+    var auth = AuthService.verificarToken(payload);
+    if (!auth.valido) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+
+    if (!AuthService.isGestor(auth.user.perfil)) {
+      throw new Error('Acesso negado.');
+    }
+
+    var idProcesso = String(payload.id_processo || '').trim();
+    if (!idProcesso) {
+      throw new Error('ID do processo não fornecido.');
+    }
+
+    var processo = Database.findById(CONFIG.SHEET_NAMES.PROCESSOS, idProcesso);
+    if (!processo) {
+      throw new Error('Processo não encontrado.');
+    }
+
+    var etiquetasTexto = this._normalizarEtiquetasTexto(payload.etiquetas || '');
+    var atualizado = Database.update(CONFIG.SHEET_NAMES.PROCESSOS, idProcesso, {
+      etiquetas: etiquetasTexto
+    });
+
+    return {
+      salvo: true,
+      processo: this._enriquecerProcesso(atualizado)
+    };
   },
 
   /**
@@ -322,7 +359,7 @@ var ProcessosService = {
     }
 
     return {
-      processo: processo,
+      processo: this._enriquecerProcesso(processo),
       movimentacoes: movimentacoes,
       cliente: clienteVinculado
     };
@@ -390,6 +427,8 @@ var ProcessosService = {
       // janela de notificação: vencidos até 30 dias e próximos 30 dias
       if (diffDias < -30 || diffDias > 30) return;
 
+      var processoEnriquecido = ProcessosService._enriquecerProcesso(proc);
+
       notificacoes.push({
         id: proc.id,
         numero_processo: proc.numero_processo || 'S/N',
@@ -397,7 +436,9 @@ var ProcessosService = {
         tipo: proc.tipo || '-',
         status: proc.status || '-',
         data_prazo: prazoDate,
-        diff_dias: diffDias
+        diff_dias: diffDias,
+        responsavel_nome: processoEnriquecido.responsavel_nome,
+        etiquetas: processoEnriquecido.etiquetas
       });
     });
 
@@ -455,8 +496,64 @@ var ProcessosService = {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    stats.recente = sorted.slice(0, 5);
+    stats.recente = this._enriquecerProcessos(sorted.slice(0, 5));
 
     return stats;
+  },
+
+  _enriquecerProcessos: function(lista) {
+    if (!lista || !lista.length) return [];
+    return lista.map(function(proc) {
+      return ProcessosService._enriquecerProcesso(proc);
+    });
+  },
+
+  _enriquecerProcesso: function(processo) {
+    if (!processo) return processo;
+
+    var clone = {};
+    for (var k in processo) {
+      if (processo.hasOwnProperty(k)) clone[k] = processo[k];
+    }
+
+    clone.etiquetas = this._parseEtiquetas(clone.etiquetas);
+    clone.etiquetas_texto = clone.etiquetas.join(', ');
+    clone.responsavel_nome = this._resolverNomeResponsavel(clone.advogado_id, clone.criado_por);
+
+    return clone;
+  },
+
+  _resolverNomeResponsavel: function(advogadoId, fallbackEmail) {
+    var id = String(advogadoId || '').trim();
+    if (id) {
+      var advogado = Database.findById(CONFIG.SHEET_NAMES.USUARIOS, id);
+      if (advogado && advogado.nome) {
+        return String(advogado.nome);
+      }
+    }
+
+    var email = String(fallbackEmail || '').trim();
+    if (!email) return '-';
+    return email.split('@')[0];
+  },
+
+  _parseEtiquetas: function(raw) {
+    if (Array.isArray(raw)) {
+      return raw.map(function(x) { return String(x || '').trim(); }).filter(function(x) { return !!x; }).slice(0, 12);
+    }
+
+    var texto = String(raw || '').trim();
+    if (!texto) return [];
+
+    return texto
+      .split(',')
+      .map(function(item) { return String(item || '').trim(); })
+      .filter(function(item) { return !!item; })
+      .slice(0, 12);
+  },
+
+  _normalizarEtiquetasTexto: function(raw) {
+    var tags = this._parseEtiquetas(raw);
+    return tags.join(', ');
   }
 };
