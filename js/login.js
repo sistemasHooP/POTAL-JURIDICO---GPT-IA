@@ -13,18 +13,38 @@ document.addEventListener('DOMContentLoaded', function() {
     // 1. Verificar se já está logado
     Auth.redirectIfAuthenticated();
 
+    const preOverlay = document.getElementById('prelogin-overlay');
+    const loginForm = document.getElementById('login-form');
+
+    function setLoginReady() {
+        if (preOverlay) preOverlay.classList.add('hidden');
+        if (loginForm) {
+            const controls = loginForm.querySelectorAll('input, button');
+            controls.forEach(el => el.disabled = false);
+        }
+    }
+
+    if (loginForm) {
+        const controls = loginForm.querySelectorAll('input, button');
+        controls.forEach(el => el.disabled = true);
+    }
+
     // --- WARM-UP (ACORDAR SERVIDOR) ---
     // Dispara um 'ping' silencioso assim que a tela carrega.
     // Isso tira o Google Apps Script do modo de suspensão enquanto o usuário digita a senha.
     console.log("Iniciando aquecimento do servidor...");
     API.call('ping', {}, 'POST', true).then(() => {
         console.log("Servidor pronto e aquecido.");
+        setLoginReady();
     }).catch(e => {
         console.log("Tentativa de aquecimento falhou (sem problemas, o login tentará novamente).");
+        setLoginReady();
     });
 
+    // Fail-safe: libera login mesmo se o warm-up demorar demais
+    setTimeout(setLoginReady, 6000);
+
     // Referências aos elementos do DOM
-    const loginForm = document.getElementById('login-form');
     const emailInput = document.getElementById('email');
     const senhaInput = document.getElementById('senha');
     const togglePasswordBtn = document.getElementById('toggle-password');
@@ -70,25 +90,33 @@ document.addEventListener('DOMContentLoaded', function() {
             senhaInput.readOnly = true;
 
             try {
-                // 1. TELA DE SINCRONIZAÇÃO (Loader Principal Personalizado)
-                Utils.showLoading("Sincronizando banco de dados...", "database");
-
-                // 2. Autenticação (Modo Silencioso)
-                const response = await API.call('login', { email, senha }, 'POST', true);
+                // 1. Autenticação (API controla loading pelo LOADING_PROFILE)
+                const response = await API.call('login', { email, senha }, 'POST', false);
 
                 // Se chegou aqui, login ok - salva sessão ANTES de redirecionar
                 Auth.saveSession(response);
-                Utils.hideLoading();
                 Utils.showToast("Login realizado com sucesso!", "success");
 
-                // Redireciona após breve delay para garantir que a sessão foi salva
+                // Redireciona após breve delay para garantir persistência da sessão
                 setTimeout(function() {
-                    Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
-                }, 150);
+                    var token = sessionStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+                    var userData = sessionStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+                    if (token && userData) {
+                        Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
+                    } else {
+                        loginEmAndamento = false;
+                        if (btnSubmit) {
+                            btnSubmit.disabled = false;
+                            btnSubmit.classList.remove('opacity-60', 'cursor-not-allowed');
+                        }
+                        emailInput.readOnly = false;
+                        senhaInput.readOnly = false;
+                        Utils.showToast('Não foi possível abrir a sessão. Tente novamente.', 'error');
+                    }
+                }, 350);
 
             } catch (error) {
                 console.error("Falha no login:", error);
-                Utils.hideLoading();
 
                 // Destrava o formulário para nova tentativa
                 loginEmAndamento = false;

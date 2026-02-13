@@ -173,30 +173,27 @@
     }
 
     // =========================================================================
-    // HELPERS CPF
+    // HELPERS DOCUMENTO (CPF/CNPJ)
     // =========================================================================
-    function normalizarCPF(valor) {
+    function normalizarDocumento(valor) {
         var digitos = String(valor || '').replace(/\D/g, '');
         if (!digitos) return '';
-        return digitos.padStart(11, '0').slice(-11);
+        if (digitos.length <= 11) return digitos.padStart(11, '0').slice(-11);
+        return digitos.padStart(14, '0').slice(-14);
     }
 
     function formatarCPF(cpf) {
-        var d = String(cpf || '').replace(/\D/g, '');
-        if (d.length === 11) {
-            return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-        }
-        return String(cpf || '-');
+        return Utils.formatDocument(cpf);
     }
 
     function pareceSerCPF(termo) {
         var digitos = termo.replace(/\D/g, '');
-        return digitos.length >= 6 && digitos.length <= 11;
+        return digitos.length >= 6 && digitos.length <= 14;
     }
 
     function ehCPFCompleto(termo) {
         var digitos = termo.replace(/\D/g, '');
-        return digitos.length === 11;
+        return digitos.length === 11 || digitos.length === 14;
     }
 
     function escapeHtml(text) {
@@ -397,7 +394,7 @@
             // ---- ESTRATEGIA 1: CPF completo -> busca direto na API ----
             // (cache local pode ter CPFs mascarados, entao prioriza API)
             if (ehCPFCompleto(termo)) {
-                var cpfNorm = normalizarCPF(termo);
+                var cpfNorm = normalizarDocumento(termo);
 
                 try {
                     cliente = await API.call('buscarClientePorCPF', { cpf: cpfNorm }, 'POST', true);
@@ -439,7 +436,7 @@
 
                 // Cache nao encontrou (possivelmente CPF mascarado) - tenta API se >= 10 digitos
                 if (cpfDigitos.length >= 10) {
-                    var cpfPad = cpfDigitos.padStart(11, '0');
+                    var cpfPad = normalizarDocumento(cpfDigitos);
                     try {
                         var clienteApi = await API.call('buscarClientePorCPF', { cpf: cpfPad }, 'POST', true);
                         if (clienteApi && clienteApi.id) {
@@ -521,12 +518,7 @@
     }
 
     function mascaraCPFInput(e) {
-        var v = e.target.value.replace(/\D/g, '');
-        if (v.length > 11) v = v.substring(0, 11);
-        if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-        else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-        else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-        e.target.value = v;
+        e.target.value = Utils.maskDocumentInput(e.target.value);
     }
 
     // =========================================================================
@@ -551,7 +543,7 @@
         document.getElementById('cliente-iniciais').textContent = iniciais;
         document.getElementById('cliente-nome').textContent = cliente.nome_completo || '-';
         document.getElementById('cliente-email').textContent = cliente.email || '-';
-        document.getElementById('cliente-cpf-display').textContent = 'CPF: ' + cpfDisplay;
+        document.getElementById('cliente-cpf-display').textContent = (String(cliente.cpf || '').replace(/\D/g, '').length === 14 ? 'CNPJ: ' : 'CPF: ') + cpfDisplay;
         document.getElementById('cliente-id-selecionado').value = cliente.id || '';
 
         var inpParte = document.getElementById('parte_nome');
@@ -576,7 +568,7 @@
                     upsertClienteNoCache(completo);
                     if (clienteSelecionado && String(clienteSelecionado.id) === String(completo.id)) {
                         clienteSelecionado = completo;
-                        document.getElementById('cliente-cpf-display').textContent = 'CPF: ' + formatarCPF(completo.cpf);
+                        document.getElementById('cliente-cpf-display').textContent = (String(completo.cpf || '').replace(/\D/g, '').length === 14 ? 'CNPJ: ' : 'CPF: ') + formatarCPF(completo.cpf);
                     }
                 }
             }).catch(function () { });
@@ -586,7 +578,7 @@
     function mostrarFormNovoCliente(cpfDigitos) {
         var cpfFormatado = '';
         if (cpfDigitos) {
-            cpfFormatado = formatarCPF(cpfDigitos.padStart(11, '0'));
+            cpfFormatado = formatarCPF(normalizarDocumento(cpfDigitos));
         }
 
         var cpfField = document.getElementById('novo-cliente-cpf');
@@ -600,7 +592,7 @@
 
         var msgEl = document.getElementById('msg-nao-encontrado');
         if (msgEl && cpfDigitos) {
-            msgEl.textContent = 'Nenhum cliente com o CPF ' + cpfFormatado + ' esta cadastrado. Preencha os dados abaixo.';
+            msgEl.textContent = 'Nenhum cliente com o documento ' + cpfFormatado + ' esta cadastrado. Preencha os dados abaixo.';
         }
 
         document.getElementById('cliente-nao-encontrado').classList.remove('hidden');
@@ -635,18 +627,23 @@
             document.getElementById('novo-cliente-nome').focus();
             return;
         }
-        if (!cpfRaw || cpfRaw.length !== 11) {
-            Utils.showToast('CPF deve ter 11 digitos.', 'warning');
+        if (!cpfRaw || (cpfRaw.length !== 11 && cpfRaw.length !== 14)) {
+            Utils.showToast('CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.', 'warning');
             document.getElementById('novo-cliente-cpf').focus();
             return;
         }
-        if (!Utils.validarCPF(cpfRaw)) {
-            Utils.showToast('CPF invalido. Verifique os digitos.', 'warning');
+        if (cpfRaw.length === 11 && !Utils.validarCPF(cpfRaw)) {
+            Utils.showToast('CPF inválido. Verifique os dígitos.', 'warning');
             document.getElementById('novo-cliente-cpf').focus();
             return;
         }
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            Utils.showToast('Digite um email valido.', 'warning');
+        if (cpfRaw.length === 14 && !Utils.validarCNPJ(cpfRaw)) {
+            Utils.showToast('CNPJ inválido. Verifique os dígitos.', 'warning');
+            document.getElementById('novo-cliente-cpf').focus();
+            return;
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            Utils.showToast('Email inválido. Se preencher, use um email válido.', 'warning');
             document.getElementById('novo-cliente-email').focus();
             return;
         }
@@ -800,7 +797,7 @@
                 if (clienteSelecionado.id) {
                     payload.cliente_id = String(clienteSelecionado.id).trim();
                 }
-                var cpfNorm = normalizarCPF(clienteSelecionado.cpf);
+                var cpfNorm = normalizarDocumento(clienteSelecionado.cpf);
                 if (cpfNorm.length === 11) {
                     payload.cpf_cliente = cpfNorm;
                 }

@@ -221,25 +221,25 @@ var Database = {
   },
 
   /**
-   * Busca registros por CPF (usa normalização).
-   * IMPORTANTE: Sempre use esta função para buscar por CPF!
+   * Busca registros por documento (CPF/CNPJ) com normalização automática.
+   * Mantém o nome findByCPF por compatibilidade com o código legado.
    * 
    * @param {string} sheetName - Nome da aba
-   * @param {string} cpfField - Nome do campo de CPF na planilha
-   * @param {any} cpfValue - CPF a buscar (em qualquer formato)
+   * @param {string} cpfField - Nome do campo do documento na planilha
+   * @param {any} cpfValue - Documento a buscar (em qualquer formato)
    * @returns {Array}
    */
   findByCPF: function(sheetName, cpfField, cpfValue) {
     var all = this.read(sheetName);
-    var cpfNormalizado = Utils.normalizarCPF(cpfValue);
-    
-    if (!cpfNormalizado) {
+    var docNormalizado = Utils.normalizarDocumento(cpfValue);
+
+    if (!docNormalizado) {
       return [];
     }
-    
+
     return all.filter(function(item) {
-      var itemCPF = Utils.normalizarCPF(item[cpfField]);
-      return itemCPF === cpfNormalizado;
+      var itemDoc = Utils.normalizarDocumento(item[cpfField]);
+      return itemDoc === docNormalizado;
     });
   },
 
@@ -312,7 +312,7 @@ var Database = {
 
   /**
    * Normaliza um valor baseado no nome do campo.
-   * CRÍTICO: Garante que CPFs sejam sempre strings com 11 dígitos.
+   * CRÍTICO: Garante que documentos sejam salvos corretamente (CPF/CNPJ).
    * @private
    */
   _normalizeValue: function(key, value) {
@@ -323,9 +323,9 @@ var Database = {
     
     var keyLower = key.toLowerCase();
     
-    // CAMPOS DE CPF: Sempre normalizar como string de 11 dígitos
-    if (keyLower === 'cpf' || keyLower.indexOf('cpf') !== -1) {
-      return Utils.normalizarCPF(value);
+    // CAMPOS DE DOCUMENTO: normaliza CPF/CNPJ automaticamente
+    if (keyLower === 'cpf' || keyLower.indexOf('cpf') !== -1 || keyLower.indexOf('documento') !== -1) {
+      return Utils.normalizarDocumento(value);
     }
     
     // CAMPOS DE ID: Sempre string

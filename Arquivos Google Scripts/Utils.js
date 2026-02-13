@@ -95,8 +95,56 @@ var Utils = {
   },
 
   // ==========================================================================
-  // CPF
+  // DOCUMENTOS (CPF/CNPJ)
   // ==========================================================================
+
+  /**
+   * Mantém apenas dígitos do documento.
+   * @param {any} valor
+   * @returns {string}
+   */
+  somenteDigitos: function(valor) {
+    if (valor === null || valor === undefined || valor === '') return '';
+    var s = String(valor);
+    if (s.charAt(0) === "'") s = s.substring(1);
+    return s.replace(/\D/g, '');
+  },
+
+  /**
+   * Detecta tipo do documento com base na quantidade de dígitos.
+   * @param {any} documento
+   * @returns {string} CPF | CNPJ | INVALIDO
+   */
+  getTipoDocumento: function(documento) {
+    var d = this.somenteDigitos(documento);
+    if (d.length <= 11 && d.length > 0) return 'CPF';
+    if (d.length > 11 && d.length <= 14) return 'CNPJ';
+    return 'INVALIDO';
+  },
+
+  /**
+   * Normaliza documento para o tamanho correto (11 ou 14 dígitos).
+   * @param {any} documento
+   * @returns {string}
+   */
+  normalizarDocumento: function(documento) {
+    var d = this.somenteDigitos(documento);
+    if (!d) return '';
+
+    if (d.length <= 11) {
+      while (d.length < 11) d = '0' + d;
+      if (d.length > 11) d = d.substring(d.length - 11);
+      return d;
+    }
+
+    if (d.length <= 14) {
+      while (d.length < 14) d = '0' + d;
+      if (d.length > 14) d = d.substring(d.length - 14);
+      return d;
+    }
+
+    return '';
+  },
 
   /**
    * Normaliza CPF para string com 11 dígitos.
@@ -105,17 +153,7 @@ var Utils = {
    * @returns {string}
    */
   normalizarCPF: function(cpf) {
-    if (cpf === null || cpf === undefined || cpf === '') {
-      return '';
-    }
-
-    var cpfStr = String(cpf);
-
-    if (cpfStr.charAt(0) === "'") {
-      cpfStr = cpfStr.substring(1);
-    }
-
-    cpfStr = cpfStr.replace(/\D/g, '');
+    var cpfStr = this.somenteDigitos(cpf);
 
     if (!cpfStr) return '';
 
@@ -201,8 +239,7 @@ var Utils = {
    * @returns {string}
    */
   normalizarCNPJ: function(cnpj) {
-    if (cnpj === null || cnpj === undefined || cnpj === '') return '';
-    var s = String(cnpj).replace(/\D/g, '');
+    var s = this.somenteDigitos(cnpj);
     if (!s) return '';
     while (s.length < 14) s = '0' + s;
     if (s.length > 14) s = s.substring(s.length - 14);
@@ -252,6 +289,32 @@ var Utils = {
     var d = this.normalizarCNPJ(cnpj);
     if (d.length !== 14) return '';
     return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  },
+
+  /**
+   * Formata documento automaticamente (CPF/CNPJ).
+   * @param {any} documento
+   * @returns {string}
+   */
+  formatDocumento: function(documento) {
+    var tipo = this.getTipoDocumento(documento);
+    if (tipo === 'CPF') return this.formatCPF(documento);
+    if (tipo === 'CNPJ') return this.formatCNPJ(documento);
+    return '';
+  },
+
+  /**
+   * Mascara documento automaticamente (CPF/CNPJ).
+   * @param {any} documento
+   * @returns {string}
+   */
+  maskDocumento: function(documento) {
+    var d = this.normalizarDocumento(documento);
+    if (!d) return '***';
+    if (d.length === 14) {
+      return d.substring(0, 2) + '.***.***/****-' + d.substring(12);
+    }
+    return this.maskCPF(d);
   },
 
   // ==========================================================================
