@@ -604,8 +604,8 @@
         }, 200);
     }
 
-    function fecharModal() {
-        if (clienteModalBusy) return;
+    function fecharModal(force) {
+        if (clienteModalBusy && !force) return;
         var modal = document.getElementById('modal-cliente');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
@@ -687,7 +687,9 @@
 
             // Limpar cache e recarregar
             Utils.Cache.clear('listarClientes');
-            fecharModal();
+            clienteModalBusy = false;
+            setClienteButtonLoading(btn, false);
+            fecharModal(true);
             carregarClientes({ forceRefresh: true });
 
             // Sincronizar com outras abas

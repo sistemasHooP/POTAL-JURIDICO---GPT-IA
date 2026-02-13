@@ -210,7 +210,18 @@ var ProcessosService = {
     // 5) Cria pasta no Drive
     var infoPasta = DriveService.criarPastaProcesso(numeroProcesso, parteNome);
 
-    // 6) Monta e salva processo
+    // 6) Define responsabilidade inicial
+    var perfil = String(auth.user.perfil || '').toUpperCase();
+    var advogadoResponsavelId = '';
+    if (perfil === ENUMS.PERFIL.ADVOGADO) {
+      // Advogado abre processo já vinculado a si.
+      // Alterações de responsável ficam no fluxo de gestão (ADMIN/PRESIDENTE).
+      advogadoResponsavelId = String(auth.user.id || '').trim();
+    } else {
+      advogadoResponsavelId = String(payload.advogado_id || '').trim();
+    }
+
+    // 7) Monta e salva processo
     var novoProcesso = {
       numero_processo: numeroProcesso,
       parte_nome: parteNome,
@@ -222,7 +233,8 @@ var ProcessosService = {
       id_pasta_drive: infoPasta.id,
       link_pasta: infoPasta.url,
       criado_por: auth.user.email,
-      advogado_id: String(payload.advogado_id || '').trim(),
+      advogado_id: advogadoResponsavelId,
+      advogado_ids: advogadoResponsavelId,
       descricao: String(payload.descricao || '').trim(),
       data_prazo: '',
       etiquetas: this._normalizarEtiquetasTexto(payload.etiquetas || '')
@@ -230,7 +242,7 @@ var ProcessosService = {
 
     var processoSalvo = Database.create(CONFIG.SHEET_NAMES.PROCESSOS, novoProcesso);
 
-    // 7) Movimentação inicial
+    // 8) Movimentação inicial
     Database.create(CONFIG.SHEET_NAMES.MOVIMENTACOES, {
       id_processo: processoSalvo.id,
       tipo: ENUMS.TIPO_MOVIMENTACAO.INICIAL,
@@ -239,7 +251,7 @@ var ProcessosService = {
       usuario_responsavel: auth.user.email
     });
 
-    // 8) Auditoria
+    // 9) Auditoria
     var detalhesLog = 'Processo ' + numeroProcesso + ' criado.';
     if (clienteId) {
       detalhesLog += ' Vinculado ao cliente ID: ' + clienteId;

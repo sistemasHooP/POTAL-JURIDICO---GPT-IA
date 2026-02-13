@@ -1257,6 +1257,7 @@ window.exportarRelatorio = function() {
     const movsOrdenadas = [...movs].reverse();
 
     movsOrdenadas.forEach((mov, idx) => {
+        const movCancelada = isMovimentacaoCancelada(mov);
         let prazoStr = '';
         if (mov.data_prazo && !movCancelada) {
             const foiRespondido = mov.id && refMap.idsRespondidos.has(String(mov.id));
