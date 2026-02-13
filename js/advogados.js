@@ -11,6 +11,24 @@ let advogadosData = [];
 let processosAtribuicaoData = [];
 let advogadoSelecionadoId = null;
 let isPresidente = false;
+let advogadoModalBusy = false;
+let processosModalBusy = false;
+
+function setAdvButtonLoading(btn, isLoading, text) {
+    if (!btn) return;
+
+    if (isLoading) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> ' + (text || 'Salvando...');
+        return;
+    }
+
+    btn.disabled = false;
+    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+    btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+}
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -267,6 +285,7 @@ window.editarAdvogado = function(id) {
 // FECHAR MODAL
 // =============================================================================
 window.fecharModalAdvogado = function() {
+    if (advogadoModalBusy) return;
     document.getElementById('modal-advogado').classList.add('hidden');
 };
 
@@ -287,8 +306,8 @@ function handleSalvarAdvogado(e) {
     }
 
     var btn = document.getElementById('btn-salvar-adv');
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Salvando...';
+    advogadoModalBusy = true;
+    setAdvButtonLoading(btn, true, 'Salvando...');
 
     var promise;
 
@@ -305,8 +324,8 @@ function handleSalvarAdvogado(e) {
         // Criar
         if (!senha || senha.length < 6) {
             Utils.showToast("Senha deve ter pelo menos 6 caracteres.", "warning");
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Salvar';
+            advogadoModalBusy = false;
+            setAdvButtonLoading(btn, false);
             return;
         }
         var payloadCriar = { nome: nome, email: email, senha: senha };
@@ -324,8 +343,8 @@ function handleSalvarAdvogado(e) {
             Utils.showToast(err.message || "Erro ao salvar.", "error");
         })
         .finally(function() {
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Salvar';
+            advogadoModalBusy = false;
+            setAdvButtonLoading(btn, false);
         });
 }
 
@@ -381,6 +400,7 @@ window.abrirModalProcessos = function(advogadoId, advogadoNome) {
 };
 
 window.fecharModalProcessos = function() {
+    if (processosModalBusy) return;
     document.getElementById('modal-processos').classList.add('hidden');
     advogadoSelecionadoId = null;
 };
@@ -416,6 +436,11 @@ function renderProcessosAtribuicao(filtro) {
         if (isAtribuido) atribuidos++;
 
         var outroAdvogado = proc.advogado_id && !isAtribuido;
+        var outroAdvogadoNome = '';
+        if (outroAdvogado) {
+            var advAlocado = advogadosData.find(function(a) { return String(a.id || '') === String(proc.advogado_id || ''); });
+            outroAdvogadoNome = advAlocado && advAlocado.nome ? advAlocado.nome : 'Outro advogado';
+        }
         var statusClass = '';
         var statusIcon = '';
 
@@ -444,6 +469,9 @@ function renderProcessosAtribuicao(filtro) {
         html += '<div class="flex-1 min-w-0">';
         html += '<p class="text-sm font-semibold text-slate-700 truncate">' + Utils.escapeHtml(proc.numero_processo || 'S/N') + '</p>';
         html += '<p class="text-[10px] text-slate-400 truncate">' + Utils.escapeHtml(proc.parte_nome || '-') + ' &middot; ' + Utils.escapeHtml(proc.tipo || '') + '</p>';
+        if (outroAdvogadoNome) {
+            html += '<p class="text-[10px] text-amber-600 truncate">Atribuído: ' + Utils.escapeHtml(outroAdvogadoNome) + '</p>';
+        }
         html += '</div>';
 
         // Status do processo
@@ -451,7 +479,7 @@ function renderProcessosAtribuicao(filtro) {
 
         // Indicador de outro advogado
         if (outroAdvogado) {
-            html += '<span class="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-200 shrink-0" title="Atribuído a outro advogado">Outro</span>';
+            html += '<span class="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-200 shrink-0" title="Atribuído a outro advogado">Alocado</span>';
         }
 
         html += '</div>';
@@ -468,7 +496,9 @@ function renderProcessosAtribuicao(filtro) {
 // TOGGLE ATRIBUIÇÃO DE PROCESSO
 // =============================================================================
 window.toggleAtribuicao = function(processoId, atribuir) {
+    if (processosModalBusy) return;
     var advId = atribuir ? advogadoSelecionadoId : '';
+    var statusEl = document.getElementById('atrib-status');
 
     // Optimistic update
     var proc = processosAtribuicaoData.find(function(p) { return p.id === processoId; });
@@ -479,9 +509,12 @@ window.toggleAtribuicao = function(processoId, atribuir) {
         );
     }
 
+    processosModalBusy = true;
+    if (statusEl) statusEl.innerHTML = '<span class="inline-flex items-center gap-1 text-indigo-600"><svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Atualizando atribuição...</span>';
     API.advogados.atribuirProcesso({ processo_id: processoId, advogado_id: advId })
         .then(function() {
             Utils.showToast(atribuir ? "Processo atribuído!" : "Processo desatribuído!", "success");
+            renderProcessosAtribuicao((document.getElementById('busca-processo-atrib') || {}).value || '');
         })
         .catch(function(err) {
             // Revert
@@ -490,6 +523,10 @@ window.toggleAtribuicao = function(processoId, atribuir) {
                 renderProcessosAtribuicao();
             }
             Utils.showToast("Erro: " + (err.message || 'Falha na atribuição.'), "error");
+        })
+        .finally(function() {
+            processosModalBusy = false;
+            renderProcessosAtribuicao((document.getElementById('busca-processo-atrib') || {}).value || '');
         });
 };
 
@@ -497,11 +534,13 @@ window.toggleAtribuicao = function(processoId, atribuir) {
 document.addEventListener('click', function(e) {
     var modalAdv = document.getElementById('modal-advogado');
     if (modalAdv && !modalAdv.classList.contains('hidden') && e.target === modalAdv) {
+        if (advogadoModalBusy) return;
         fecharModalAdvogado();
     }
 
     var modalProc = document.getElementById('modal-processos');
     if (modalProc && !modalProc.classList.contains('hidden') && e.target === modalProc) {
+        if (processosModalBusy) return;
         fecharModalProcessos();
     }
 });
