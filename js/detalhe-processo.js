@@ -13,6 +13,53 @@ let currentProcessId = null;
 let currentProcessData = null;
 let currentMovimentacoes = []; // Lista de movimentações para popular dropdown
 let localReferences = {}; // Fallback temporário p/ UI otimista (2s). Dados reais vêm da API/banco.
+let modalMovimentacaoState = { mode: '', movId: '' };
+let etiquetasBuffer = [];
+let modalActionInProgress = false;
+
+function isMovimentacaoCancelada(mov) {
+    return !!(mov && mov.cancelado_em);
+}
+
+function setButtonLoading(btn, isLoading, loadingText) {
+    if (!btn) return;
+
+    if (isLoading) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = '<span class="inline-flex items-center gap-2"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' + Utils.escapeHtml(loadingText || 'Salvando...') + '</span>';
+        return;
+    }
+
+    if (btn.dataset.originalHtml) {
+        btn.innerHTML = btn.dataset.originalHtml;
+    }
+    btn.disabled = false;
+    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+}
+
+function lockModalAction(lock) {
+    modalActionInProgress = !!lock;
+
+    var closeMov = document.getElementById('mov-modal-close');
+    var cancelMov = document.getElementById('mov-modal-cancel');
+    var closeEtiq = document.getElementById('etiquetas-modal-close');
+    var cancelEtiq = document.getElementById('etiquetas-cancel-btn');
+
+    [closeMov, cancelMov, closeEtiq, cancelEtiq].forEach(function(el) {
+        if (!el) return;
+        el.disabled = !!lock;
+        if (lock) el.classList.add('opacity-60', 'cursor-not-allowed');
+        else el.classList.remove('opacity-60', 'cursor-not-allowed');
+    });
+}
+
+function closeModalSafe(modal) {
+    if (!modal || modalActionInProgress) return;
+    modal.classList.add('hidden');
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -43,10 +90,20 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFileInput();
     setupNotasInternas();
     setupFloatingButton();
+    setupMovimentacaoModal();
+    setupEtiquetasModal();
+    ensureDocumentosPortal();
 
     const formMov = document.getElementById('form-movimentacao');
     if (formMov) {
         formMov.addEventListener('submit', handleMovimentacaoSubmit);
+    }
+
+    const btnEtiquetas = document.getElementById('btn-editar-etiquetas');
+    if (btnEtiquetas) {
+        btnEtiquetas.addEventListener('click', function() {
+            abrirModalEtiquetas();
+        });
     }
 
     const tipoSelectInit = document.getElementById('mov-tipo');
@@ -86,6 +143,7 @@ function buildReferenceMap(movimentacoes) {
     if (!movimentacoes) return { respondidoPor, idsRespondidos };
 
     movimentacoes.forEach(mov => {
+        if (isMovimentacaoCancelada(mov)) return;
         const refId = mov.mov_referencia_id;
         if (refId) {
             respondidoPor[String(refId)] = {
@@ -240,9 +298,10 @@ function loadProcessoDetalhe(id) {
         if (elData) elData.textContent = Utils.formatDate(p.data_entrada);
 
         const elCriador = document.getElementById('proc-criador');
-        if (elCriador) elCriador.textContent = p.criado_por ? p.criado_por.split('@')[0] : '-';
+        if (elCriador) elCriador.textContent = p.responsavel_nome || (p.criado_por ? p.criado_por.split('@')[0] : '-');
 
         renderClienteInfo(p);
+        renderEtiquetasProcesso(p.etiquetas);
 
         // Drive link
         const btnDrive = document.getElementById('btn-drive');
@@ -351,6 +410,7 @@ function populateReferenciaDropdown(movimentacoes, refMap) {
 
     // Filtra: movimentações que têm prazo E que NÃO foram respondidas
     const pendentes = movimentacoes.filter(m => {
+        if (isMovimentacaoCancelada(m)) return false;
         if (!m.data_prazo || !m.id) return false;
         return !refMap.idsRespondidos.has(String(m.id));
     });
@@ -679,6 +739,24 @@ window.scrollToForm = function() {
     }
 };
 
+function renderEtiquetasProcesso(etiquetas) {
+    var wrap = document.getElementById('proc-etiquetas-wrap');
+    var list = document.getElementById('proc-etiquetas-list');
+    if (!wrap || !list) return;
+
+    var tags = Array.isArray(etiquetas) ? etiquetas : String(etiquetas || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+    if (!tags.length) {
+        wrap.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    list.innerHTML = tags.map(function(tag) {
+        return '<span class="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">' + Utils.escapeHtml(tag) + '</span>';
+    }).join('');
+}
+
 // =============================================================================
 // STATUS UI
 // =============================================================================
@@ -689,7 +767,11 @@ function updateStatusUI(status) {
         statusEl.className = `px-4 py-2 text-base font-bold rounded-lg border shadow-sm flex items-center gap-2 uppercase tracking-wide ${Utils.getStatusClass(status)}`;
     }
     const statusDescEl = document.getElementById('proc-status-desc');
-    if (statusDescEl) statusDescEl.textContent = Utils.getStatusLabel(status);
+    if (statusDescEl) {
+        var etiquetas = currentProcessData && currentProcessData.processo ? currentProcessData.processo.etiquetas : [];
+        var textoEtiquetas = Array.isArray(etiquetas) && etiquetas.length ? ' | Etiquetas: ' + etiquetas.join(', ') : '';
+        statusDescEl.textContent = Utils.getStatusLabel(status) + textoEtiquetas;
+    }
 }
 
 // =============================================================================
@@ -768,7 +850,8 @@ function renderTimeline(movimentacoes, refMap) {
 }
 
 function createTimelineItem(mov, refMap, movsById) {
-    const tipo = mov.tipo.toUpperCase();
+    const tipo = String(mov.tipo || '').toUpperCase();
+    const movCancelada = isMovimentacaoCancelada(mov);
     let iconHtml = `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
     let bgIcon = "bg-blue-100";
     let borderIcon = "border-white";
@@ -786,7 +869,7 @@ function createTimelineItem(mov, refMap, movsById) {
 
     // ---- PRAZO BADGE ----
     let prazoHtml = "";
-    if (mov.data_prazo) {
+    if (mov.data_prazo && !movCancelada) {
         const prazoFmt = Utils.formatDate(mov.data_prazo).split(' ')[0];
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
@@ -895,6 +978,22 @@ function createTimelineItem(mov, refMap, movsById) {
     const item = document.createElement('div');
     item.className = "relative pl-12 group animate-fade-in";
 
+    const canManageMov = !!(mov.id && Auth.getUser && Auth.getUser());
+    const acoesMovHtml = canManageMov ? (movCancelada
+        ? `<span class="inline-flex items-center px-2 py-1 text-[10px] font-bold rounded border bg-red-50 text-red-600 border-red-200">Cancelada</span>`
+        : `<div class="flex items-center gap-1.5"><button type="button" data-action="editar-mov" data-mov-id="${Utils.escapeHtml(mov.id || '')}" class="px-2 py-1 text-[10px] font-bold rounded border bg-slate-50 text-slate-600 hover:bg-slate-100">Editar</button><button type="button" data-action="cancelar-mov" data-mov-id="${Utils.escapeHtml(mov.id || '')}" class="px-2 py-1 text-[10px] font-bold rounded border bg-red-50 text-red-600 border-red-200 hover:bg-red-100">Cancelar</button></div>`)
+        : '';
+
+    const badgeCancelamento = movCancelada
+        ? `<div class="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700"><strong>Movimentação cancelada</strong>${mov.cancelado_motivo ? ': ' + Utils.escapeHtml(mov.cancelado_motivo) : ''}</div>`
+        : '';
+    const movEditada = !!(mov.editado_em || Number(mov.versao_edicao || 0) > 0);
+    const badgeEdicao = movEditada
+        ? `<div class="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700"><strong>Movimentação editada</strong>${mov.editado_em ? ' em ' + Utils.formatDate(mov.editado_em) : ''}${mov.editado_por ? ' por ' + Utils.escapeHtml(String(mov.editado_por).split('@')[0]) : ''}${Number(mov.versao_edicao || 0) > 0 ? ' (v' + Number(mov.versao_edicao) + ')' : ''}</div>`
+        : '';
+    const classeTituloCancelada = movCancelada ? 'line-through text-slate-400' : 'text-slate-800';
+    const classeDescricaoCancelada = movCancelada ? 'line-through text-slate-400' : 'text-slate-600';
+
     item.innerHTML = `
         <div class="absolute left-0 top-0 w-12 h-12 rounded-full border-4 ${borderIcon} shadow-sm z-10 flex items-center justify-center ${bgIcon}">
             ${iconHtml}
@@ -902,7 +1001,7 @@ function createTimelineItem(mov, refMap, movsById) {
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-200 transition-colors relative">
             <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h4 class="font-bold text-slate-800 text-base">${mov.tipo}</h4>
+                    <h4 class="font-bold ${classeTituloCancelada} text-base">${Utils.escapeHtml(mov.tipo || '-')}</h4>
                     <span class="text-xs text-slate-400 font-medium flex items-center gap-1 mt-1">
                         <span class="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] font-bold border border-slate-200" title="${mov.usuario_responsavel}">
                             ${autor}
@@ -910,15 +1009,18 @@ function createTimelineItem(mov, refMap, movsById) {
                         ${emailAutor}
                     </span>
                 </div>
-                <span class="text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">${Utils.formatDate(mov.data_movimentacao)}</span>
+                <div class="flex items-center gap-2"><span class="text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">${Utils.formatDate(mov.data_movimentacao)}</span>${acoesMovHtml}</div>
             </div>
 
             ${referenciaHtml}
             ${prazoHtml}
 
-            <div class="text-sm text-slate-600 leading-relaxed break-words mt-2">
+            <div class="text-sm ${classeDescricaoCancelada} leading-relaxed break-words mt-2">
                 ${Utils.escapeHtml(mov.descricao).replace(/\n/g, '<br>')}
             </div>
+
+            ${badgeCancelamento}
+            ${badgeEdicao}
 
             ${anexoHtml}
         </div>
@@ -1160,8 +1262,9 @@ window.exportarRelatorio = function() {
     const movsOrdenadas = [...movs].reverse();
 
     movsOrdenadas.forEach((mov, idx) => {
+        const movCancelada = isMovimentacaoCancelada(mov);
         let prazoStr = '';
-        if (mov.data_prazo) {
+        if (mov.data_prazo && !movCancelada) {
             const foiRespondido = mov.id && refMap.idsRespondidos.has(String(mov.id));
             if (foiRespondido) {
                 const resp = refMap.respondidoPor[String(mov.id)];
@@ -1192,18 +1295,32 @@ window.exportarRelatorio = function() {
             anexoStr = '<br><em style="color:#2563eb;">Anexo: ' + Utils.escapeHtml(mov.anexo_nome) + '</em>';
         }
 
+        const estiloTextoCancelado = movCancelada ? 'text-decoration:line-through;color:#94a3b8;' : 'color:#1e293b;';
+        const estiloDescricaoCancelada = movCancelada ? 'text-decoration:line-through;color:#94a3b8;' : '';
+        const badgeCancelamentoRelatorio = movCancelada
+            ? '<br><span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:999px;font-size:10px;font-weight:700;">CANCELADA</span>'
+            : '';
+        const movEditada = !!(mov.editado_em || Number(mov.versao_edicao || 0) > 0);
+        const badgeEdicaoRelatorio = movEditada
+            ? '<br><span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:999px;font-size:10px;font-weight:700;">EDITADA' + (Number(mov.versao_edicao || 0) > 0 ? ' (v' + Number(mov.versao_edicao) + ')' : '') + '</span>'
+            : '';
+        const infoEdicaoRelatorio = movEditada
+            ? '<br><em style="font-size:11px;color:#92400e;">Edição: ' + (mov.editado_em ? Utils.formatDate(mov.editado_em) : '-') + (mov.editado_por ? ' por ' + Utils.escapeHtml(String(mov.editado_por).split('@')[0]) : '') + '</em>'
+            : '';
+
         movsHtml += `
-            <tr style="border-bottom:1px solid #e2e8f0;">
+            <tr style="border-bottom:1px solid #e2e8f0;${movCancelada ? 'background:#f8fafc;' : ''}">
                 <td style="padding:10px;vertical-align:top;width:30px;color:#94a3b8;font-weight:bold;">${idx + 1}</td>
                 <td style="padding:10px;vertical-align:top;width:100px;">
                     <span style="font-size:12px;color:#64748b;">${Utils.formatDate(mov.data_movimentacao)}</span>
                 </td>
                 <td style="padding:10px;vertical-align:top;width:140px;">
-                    <strong style="color:#1e293b;">${Utils.escapeHtml(mov.tipo)}</strong><br>
+                    <strong style="${estiloTextoCancelado}">${Utils.escapeHtml(mov.tipo)}</strong>${badgeCancelamentoRelatorio}${badgeEdicaoRelatorio}<br>
                     <span style="font-size:11px;color:#94a3b8;">${mov.usuario_responsavel ? mov.usuario_responsavel.split('@')[0] : '-'}</span>
                 </td>
-                <td style="padding:10px;vertical-align:top;">
+                <td style="padding:10px;vertical-align:top;${estiloDescricaoCancelada}">
                     ${Utils.escapeHtml(mov.descricao).replace(/\n/g, '<br>')}
+                    ${infoEdicaoRelatorio}
                     ${refStr}
                     ${prazoStr}
                     ${anexoStr}
@@ -1221,6 +1338,10 @@ window.exportarRelatorio = function() {
                 <p style="margin:0;font-size:13px;color:#78350f;white-space:pre-wrap;">${Utils.escapeHtml(notas)}</p>
             </div>`;
     }
+
+    const nomesResponsaveis = Array.isArray(p.responsaveis_nomes) && p.responsaveis_nomes.length
+        ? p.responsaveis_nomes.join(', ')
+        : (p.responsavel_nome || '-');
 
     const relatorioHtml = `
 <!DOCTYPE html>
@@ -1288,6 +1409,10 @@ window.exportarRelatorio = function() {
         <div class="info-item">
             <div class="info-label">Email Notificacoes</div>
             <div class="info-value">${Utils.escapeHtml(p.email_interessado || '-')}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Advogado(s) Responsável(is)</div>
+            <div class="info-value">${Utils.escapeHtml(nomesResponsaveis)}</div>
         </div>
         <div class="info-item" style="grid-column: 1 / -1;">
             <div class="info-label">Observacoes Iniciais</div>
@@ -1508,6 +1633,15 @@ function renderDocumentos(movimentacoes, linkPasta) {
     listEl.innerHTML = html;
 }
 
+
+function ensureDocumentosPortal() {
+    var section = document.getElementById('documentos-section');
+    if (!section) return;
+    if (section.parentElement !== document.body) {
+        document.body.appendChild(section);
+    }
+}
+
 window.toggleDocumentos = function() {
     var section = document.getElementById('documentos-section');
     if (!section) return;
@@ -1527,6 +1661,249 @@ document.addEventListener('click', function(e) {
     if (section && !section.classList.contains('hidden') && e.target === section) {
         documentosPanelOpen = false;
         section.classList.add('hidden');
+    }
+});
+
+
+
+async function editarMovimentacao(movId) {
+    var mov = (currentMovimentacoes || []).find(function(m){ return String(m.id || '') === String(movId || ''); });
+    if (!mov) return Utils.showToast('Movimentação não encontrada.', 'error');
+    if (isMovimentacaoCancelada(mov)) return Utils.showToast('Movimentação cancelada não pode ser editada.', 'warning');
+    abrirModalMovimentacao('editar', mov);
+}
+
+async function cancelarMovimentacao(movId) {
+    var mov = (currentMovimentacoes || []).find(function(m){ return String(m.id || '') === String(movId || ''); });
+    if (!mov) return Utils.showToast('Movimentação não encontrada.', 'error');
+    if (isMovimentacaoCancelada(mov)) return Utils.showToast('Movimentação já cancelada.', 'warning');
+    abrirModalMovimentacao('cancelar', mov);
+}
+
+function setupMovimentacaoModal() {
+    var modal = document.getElementById('mov-modal');
+    var closeBtn = document.getElementById('mov-modal-close');
+    var cancelBtn = document.getElementById('mov-modal-cancel');
+    var form = document.getElementById('mov-modal-form');
+
+    if (!modal || !form) return;
+
+    function close(force) {
+        if (modalActionInProgress && !force) return;
+        modal.classList.add('hidden');
+        modalMovimentacaoState = { mode: '', movId: '' };
+        form.reset();
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    modal.addEventListener('click', function(ev) { if (ev.target === modal) closeModalSafe(modal); });
+
+    form.addEventListener('submit', async function(ev) {
+        ev.preventDefault();
+
+        var movId = modalMovimentacaoState.movId;
+        var mode = modalMovimentacaoState.mode;
+        if (!movId || !mode) return;
+
+        var submitBtn = document.getElementById('mov-modal-submit');
+
+        try {
+            lockModalAction(true);
+            setButtonLoading(submitBtn, true, mode === 'editar' ? 'Salvando edição...' : 'Cancelando movimentação...');
+
+            if (mode === 'editar') {
+                var tipo = String(document.getElementById('mov-modal-tipo').value || '').trim();
+                var descricao = String(document.getElementById('mov-modal-descricao').value || '').trim();
+                var prazo = String(document.getElementById('mov-modal-prazo').value || '').trim();
+
+                if (!tipo || !descricao) {
+                    Utils.showToast('Tipo e descrição são obrigatórios.', 'warning');
+                    return;
+                }
+
+                await API.call('editarMovimentacao', {
+                    id_movimentacao: movId,
+                    tipo: tipo,
+                    descricao: descricao,
+                    data_prazo: prazo
+                }, 'POST', true);
+                API.invalidateRelatedCache('editarMovimentacao');
+                Utils.showToast('Movimentação atualizada.', 'success');
+            } else {
+                var motivo = String(document.getElementById('mov-modal-motivo').value || '').trim();
+                await API.call('cancelarMovimentacao', {
+                    id_movimentacao: movId,
+                    motivo: motivo
+                }, 'POST', true);
+                API.invalidateRelatedCache('cancelarMovimentacao');
+                Utils.showToast('Movimentação cancelada.', 'success');
+            }
+
+            close(true);
+            loadProcessoDetalhe(currentProcessId);
+        } catch (e) {
+            console.error(e);
+            Utils.showToast(e.message || 'Erro ao salvar movimentação.', 'error');
+        } finally {
+            lockModalAction(false);
+            setButtonLoading(submitBtn, false);
+        }
+    });
+}
+
+function abrirModalMovimentacao(mode, mov) {
+    var modal = document.getElementById('mov-modal');
+    if (!modal) return;
+
+    modalMovimentacaoState = { mode: mode, movId: String(mov.id || '') };
+
+    var title = document.getElementById('mov-modal-title');
+    var submit = document.getElementById('mov-modal-submit');
+    var editFields = document.getElementById('mov-modal-edit-fields');
+    var cancelFields = document.getElementById('mov-modal-cancel-fields');
+
+    if (mode === 'editar') {
+        if (title) title.textContent = 'Editar Movimentação';
+        if (submit) {
+            submit.textContent = 'Salvar Alterações';
+            submit.className = 'px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg';
+        }
+        if (editFields) editFields.classList.remove('hidden');
+        if (cancelFields) cancelFields.classList.add('hidden');
+
+        document.getElementById('mov-modal-tipo').value = mov.tipo || '';
+        document.getElementById('mov-modal-descricao').value = mov.descricao || '';
+        document.getElementById('mov-modal-prazo').value = mov.data_prazo ? new Date(mov.data_prazo).toISOString().slice(0, 10) : '';
+    } else {
+        if (title) title.textContent = 'Cancelar Movimentação';
+        if (submit) {
+            submit.textContent = 'Confirmar Cancelamento';
+            submit.className = 'px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg';
+        }
+        if (editFields) editFields.classList.add('hidden');
+        if (cancelFields) cancelFields.classList.remove('hidden');
+        document.getElementById('mov-modal-motivo').value = '';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function setupEtiquetasModal() {
+    var modal = document.getElementById('etiquetas-modal');
+    var closeBtn = document.getElementById('etiquetas-modal-close');
+    var cancelBtn = document.getElementById('etiquetas-cancel-btn');
+    var addBtn = document.getElementById('etiquetas-add-btn');
+    var saveBtn = document.getElementById('etiquetas-save-btn');
+    var input = document.getElementById('etiquetas-nova-input');
+
+    if (!modal) return;
+
+    function close() { if (modalActionInProgress) return; modal.classList.add('hidden'); }
+
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    modal.addEventListener('click', function(ev) { if (ev.target === modal) closeModalSafe(modal); });
+
+    if (addBtn) addBtn.addEventListener('click', function() {
+        var value = String(input.value || '').trim();
+        if (!value) return;
+        if (etiquetasBuffer.indexOf(value) === -1) etiquetasBuffer.push(value);
+        input.value = '';
+        renderEtiquetasModalList();
+    });
+
+    if (input) input.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') {
+            ev.preventDefault();
+            if (addBtn) addBtn.click();
+        }
+    });
+
+    if (saveBtn) saveBtn.addEventListener('click', salvarEtiquetasModal);
+}
+
+function abrirModalEtiquetas() {
+    if (!currentProcessData || !currentProcessData.processo) return;
+    var modal = document.getElementById('etiquetas-modal');
+    etiquetasBuffer = Array.isArray(currentProcessData.processo.etiquetas) ? currentProcessData.processo.etiquetas.slice() : [];
+    renderEtiquetasModalList();
+    var input = document.getElementById('etiquetas-nova-input');
+    if (input) input.value = '';
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderEtiquetasModalList() {
+    var list = document.getElementById('etiquetas-modal-list');
+    if (!list) return;
+
+    if (!etiquetasBuffer.length) {
+        list.innerHTML = '<p class="text-xs text-slate-400 italic">Nenhuma etiqueta cadastrada.</p>';
+        return;
+    }
+
+    list.innerHTML = etiquetasBuffer.map(function(tag, idx) {
+        return '<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">' +
+            Utils.escapeHtml(tag) +
+            '<button type="button" class="text-purple-500 hover:text-red-600" data-action="remover-etiqueta" data-tag-index="' + idx + '">' +
+            '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' +
+            '</button></span>';
+    }).join('');
+}
+
+async function salvarEtiquetasModal() {
+    if (!currentProcessData || !currentProcessData.processo) return;
+
+    var saveBtn = document.getElementById('etiquetas-save-btn');
+
+    try {
+        lockModalAction(true);
+        setButtonLoading(saveBtn, true, 'Salvando etiquetas...');
+
+        var result = await API.call('salvarEtiquetasProcesso', {
+            id_processo: currentProcessData.processo.id,
+            etiquetas: etiquetasBuffer.join(', ')
+        }, 'POST', true);
+        API.invalidateRelatedCache('salvarEtiquetasProcesso');
+
+        if (result && result.processo) {
+            currentProcessData.processo = result.processo;
+            renderEtiquetasProcesso(result.processo.etiquetas);
+            updateStatusUI(currentProcessData.processo.status);
+        }
+
+        var modal = document.getElementById('etiquetas-modal');
+        if (modal) modal.classList.add('hidden');
+        Utils.showToast('Etiquetas atualizadas.', 'success');
+    } catch (err) {
+        console.error(err);
+        Utils.showToast(err.message || 'Erro ao atualizar etiquetas.', 'error');
+    } finally {
+        lockModalAction(false);
+        setButtonLoading(saveBtn, false);
+    }
+}
+
+document.addEventListener('click', function(ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-action]') : null;
+    if (!btn) return;
+
+    var action = btn.getAttribute('data-action');
+    var movId = btn.getAttribute('data-mov-id');
+
+    if (action === 'editar-mov' && movId) {
+        ev.preventDefault();
+        editarMovimentacao(movId);
+    } else if (action === 'cancelar-mov' && movId) {
+        ev.preventDefault();
+        cancelarMovimentacao(movId);
+    } else if (action === 'remover-etiqueta') {
+        ev.preventDefault();
+        var idx = Number(btn.getAttribute('data-tag-index'));
+        if (Number.isFinite(idx) && idx >= 0) {
+            etiquetasBuffer.splice(idx, 1);
+            renderEtiquetasModalList();
+        }
     }
 });
 
@@ -1566,6 +1943,7 @@ function startAutoRefresh() {
                     populateReferenciaDropdown(movs, refMap);
                     renderDocumentos(movs, p.link_pasta);
                     loadNotasFromAPI(p);
+                    renderEtiquetasProcesso(p.etiquetas);
 
                     var countBadge = document.getElementById('mov-count-badge');
                     if (countBadge) countBadge.textContent = movs.length;

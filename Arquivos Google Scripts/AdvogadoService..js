@@ -29,13 +29,17 @@ var AdvogadoService = {
 
     var usuarios = Database.read(CONFIG.SHEET_NAMES.USUARIOS);
 
-    // PRESIDENTE vê ADMIN + ADVOGADO; ADMIN vê apenas ADVOGADO
+    // PRESIDENTE vê ADMIN + ADVOGADO;
+    // ADMIN vê ADVOGADOS + ele próprio (para se habilitar em processos quando necessário)
+    var usuarioLogadoId = String(auth.user.id || '').trim();
     var advogados = usuarios.filter(function(u) {
       var p = (u.perfil || '').toUpperCase();
       if (perfil === ENUMS.PERFIL.PRESIDENTE) {
         return p === ENUMS.PERFIL.ADVOGADO || p === ENUMS.PERFIL.ADMIN;
       }
-      return p === ENUMS.PERFIL.ADVOGADO;
+      if (p === ENUMS.PERFIL.ADVOGADO) return true;
+      if (p === ENUMS.PERFIL.ADMIN && String(u.id || '').trim() === usuarioLogadoId) return true;
+      return false;
     });
 
     // Retorna sem expor a senha
@@ -213,28 +217,44 @@ var AdvogadoService = {
 
     var processoId = String(payload.processo_id || '').trim();
     var advogadoId = String(payload.advogado_id || '').trim();
+    var atribuir = payload.atribuir === true || payload.atribuir === 'true';
 
     if (!processoId) throw new Error('ID do processo não fornecido.');
 
     var processo = Database.findById(CONFIG.SHEET_NAMES.PROCESSOS, processoId);
     if (!processo) throw new Error('Processo não encontrado.');
 
-    // advogadoId vazio = desatribuir
-    if (advogadoId) {
-      var advogado = Database.findById(CONFIG.SHEET_NAMES.USUARIOS, advogadoId);
-      if (!advogado) throw new Error('Advogado não encontrado.');
+    if (!advogadoId) throw new Error('ID do advogado não fornecido.');
+
+    var advogado = Database.findById(CONFIG.SHEET_NAMES.USUARIOS, advogadoId);
+    if (!advogado) throw new Error('Advogado não encontrado.');
+
+    var listaAtual = String(processo.advogado_ids || processo.advogado_id || '')
+      .split(',')
+      .map(function(item) { return String(item || '').trim(); })
+      .filter(function(item) { return !!item; });
+
+    var idx = listaAtual.indexOf(advogadoId);
+    if (atribuir) {
+      if (idx === -1) listaAtual.push(advogadoId);
+    } else {
+      if (idx !== -1) listaAtual.splice(idx, 1);
     }
 
+    var advogadoIdsStr = listaAtual.join(', ');
+
     Database.update(CONFIG.SHEET_NAMES.PROCESSOS, processoId, {
-      advogado_id: advogadoId
+      advogado_ids: advogadoIdsStr,
+      advogado_id: listaAtual.length ? listaAtual[0] : ''
     });
 
     Utils.logAction(auth.user.email, 'ATRIBUIR_PROCESSO',
       'Processo ' + (processo.numero_processo || processoId) +
-      ' atribuído ao advogado ' + (advogadoId || 'NENHUM'));
+      (atribuir ? ' atribuído ao advogado ' : ' desatribuído do advogado ') + advogadoId);
 
-    return { atribuido: true };
+    return { atribuido: atribuir, advogado_ids: listaAtual };
   },
+
 
   /**
    * Lista processos atribuídos a um advogado específico.
@@ -259,7 +279,8 @@ var AdvogadoService = {
     var processos = Database.read(CONFIG.SHEET_NAMES.PROCESSOS);
 
     return processos.filter(function(p) {
-      return String(p.advogado_id || '').trim() === advogadoId;
+      var ids = String(p.advogado_ids || p.advogado_id || '').split(',').map(function(i) { return String(i || '').trim(); }).filter(function(i) { return !!i; });
+      return ids.indexOf(advogadoId) !== -1;
     }).map(function(p) {
       return {
         id: p.id,
@@ -298,7 +319,8 @@ var AdvogadoService = {
         parte_nome: p.parte_nome,
         tipo: p.tipo,
         status: p.status,
-        advogado_id: p.advogado_id || ''
+        advogado_id: p.advogado_id || '',
+        advogado_ids: String(p.advogado_ids || p.advogado_id || '').split(',').map(function(i) { return String(i || '').trim(); }).filter(function(i) { return !!i; })
       };
     });
   }
