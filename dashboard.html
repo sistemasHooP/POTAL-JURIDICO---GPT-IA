@@ -18,7 +18,7 @@
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
+<body class="page-shell bg-slate-50 min-h-screen pb-20 md:pb-0">
 
     <!-- Navbar Mobile (Topo) -->
     <nav class="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
@@ -86,19 +86,28 @@
         </aside>
 
         <!-- Conteúdo Principal -->
-        <main class="flex-1 h-full overflow-y-auto bg-slate-50 p-4 md:p-8">
+        <main class="flex-1 h-full overflow-y-auto bg-transparent p-4 md:p-8">
             
             <!-- Welcome Section -->
-            <div class="mb-8">
-                <h2 class="text-2xl font-bold text-slate-800">Visão Geral</h2>
-                <p class="text-slate-500">Acompanhamento em tempo real dos processos.</p>
+            <div class="mb-8 rounded-2xl border border-sky-200/60 bg-gradient-to-r from-sky-50 via-white to-indigo-50 p-6 md:p-7 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.22em] text-sky-700 font-semibold">Painel de Controle</p>
+                        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-1">Visão Geral Estratégica</h2>
+                        <p class="text-slate-600 mt-2">Acompanhamento em tempo real dos processos, prazos e produtividade do gabinete.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1.5 rounded-full bg-white border border-sky-200 text-sky-700 text-xs font-semibold">Monitoramento Ativo</span>
+                        <span class="px-3 py-1.5 rounded-full bg-white border border-indigo-200 text-indigo-700 text-xs font-semibold">Sincronização Inteligente</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Cards de Indicadores -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 
                 <!-- Card Total -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                <div class="kpi-card bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
                     <div>
                         <p class="text-sm font-medium text-slate-500">Total de Processos</p>
                         <h3 class="text-3xl font-bold text-slate-800 mt-1" id="stats-total">-</h3>
@@ -109,7 +118,7 @@
                 </div>
 
                 <!-- Card Em Andamento -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                <div class="kpi-card bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
                     <div>
                         <p class="text-sm font-medium text-slate-500">Em Andamento</p>
                         <h3 class="text-3xl font-bold text-blue-600 mt-1" id="stats-andamento">-</h3>
@@ -120,7 +129,7 @@
                 </div>
 
                 <!-- Card Julgados -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                <div class="kpi-card bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
                     <div>
                         <p class="text-sm font-medium text-slate-500">Julgados</p>
                         <h3 class="text-3xl font-bold text-green-600 mt-1" id="stats-julgado">-</h3>
@@ -131,7 +140,7 @@
                 </div>
 
                 <!-- Card Sobrestados/Arquivados -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                <div class="kpi-card bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
                     <div>
                         <p class="text-sm font-medium text-slate-500">Sobrestados</p>
                         <h3 class="text-3xl font-bold text-orange-500 mt-1" id="stats-sobrestado">-</h3>
