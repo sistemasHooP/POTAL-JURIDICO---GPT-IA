@@ -15,14 +15,51 @@ let currentMovimentacoes = []; // Lista de movimentações para popular dropdown
 let localReferences = {}; // Fallback temporário p/ UI otimista (2s). Dados reais vêm da API/banco.
 let modalMovimentacaoState = { mode: '', movId: '' };
 let etiquetasBuffer = [];
+let modalActionInProgress = false;
 
 function isMovimentacaoCancelada(mov) {
     return !!(mov && mov.cancelado_em);
 }
 
-function isMovimentacaoCancelada(mov) {
-    return !!(mov && mov.cancelado_em);
+function setButtonLoading(btn, isLoading, loadingText) {
+    if (!btn) return;
+
+    if (isLoading) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = '<span class="inline-flex items-center gap-2"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' + Utils.escapeHtml(loadingText || 'Salvando...') + '</span>';
+        return;
+    }
+
+    if (btn.dataset.originalHtml) {
+        btn.innerHTML = btn.dataset.originalHtml;
+    }
+    btn.disabled = false;
+    btn.classList.remove('opacity-70', 'cursor-not-allowed');
 }
+
+function lockModalAction(lock) {
+    modalActionInProgress = !!lock;
+
+    var closeMov = document.getElementById('mov-modal-close');
+    var cancelMov = document.getElementById('mov-modal-cancel');
+    var closeEtiq = document.getElementById('etiquetas-modal-close');
+    var cancelEtiq = document.getElementById('etiquetas-cancel-btn');
+
+    [closeMov, cancelMov, closeEtiq, cancelEtiq].forEach(function(el) {
+        if (!el) return;
+        el.disabled = !!lock;
+        if (lock) el.classList.add('opacity-60', 'cursor-not-allowed');
+        else el.classList.remove('opacity-60', 'cursor-not-allowed');
+    });
+}
+
+function closeModalSafe(modal) {
+    if (!modal || modalActionInProgress) return;
+    modal.classList.add('hidden');
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -55,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFloatingButton();
     setupMovimentacaoModal();
     setupEtiquetasModal();
+    ensureDocumentosPortal();
 
     const formMov = document.getElementById('form-movimentacao');
     if (formMov) {
@@ -1567,6 +1605,15 @@ function renderDocumentos(movimentacoes, linkPasta) {
     listEl.innerHTML = html;
 }
 
+
+function ensureDocumentosPortal() {
+    var section = document.getElementById('documentos-section');
+    if (!section) return;
+    if (section.parentElement !== document.body) {
+        document.body.appendChild(section);
+    }
+}
+
 window.toggleDocumentos = function() {
     var section = document.getElementById('documentos-section');
     if (!section) return;
@@ -1614,6 +1661,7 @@ function setupMovimentacaoModal() {
     if (!modal || !form) return;
 
     function close() {
+        if (modalActionInProgress) return;
         modal.classList.add('hidden');
         modalMovimentacaoState = { mode: '', movId: '' };
         form.reset();
@@ -1621,7 +1669,7 @@ function setupMovimentacaoModal() {
 
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (cancelBtn) cancelBtn.addEventListener('click', close);
-    modal.addEventListener('click', function(ev) { if (ev.target === modal) close(); });
+    modal.addEventListener('click', function(ev) { if (ev.target === modal) closeModalSafe(modal); });
 
     form.addEventListener('submit', async function(ev) {
         ev.preventDefault();
@@ -1630,7 +1678,12 @@ function setupMovimentacaoModal() {
         var mode = modalMovimentacaoState.mode;
         if (!movId || !mode) return;
 
+        var submitBtn = document.getElementById('mov-modal-submit');
+
         try {
+            lockModalAction(true);
+            setButtonLoading(submitBtn, true, mode === 'editar' ? 'Salvando edição...' : 'Cancelando movimentação...');
+
             if (mode === 'editar') {
                 var tipo = String(document.getElementById('mov-modal-tipo').value || '').trim();
                 var descricao = String(document.getElementById('mov-modal-descricao').value || '').trim();
@@ -1641,19 +1694,21 @@ function setupMovimentacaoModal() {
                     return;
                 }
 
-                await API.movimentacoes.editar({
+                await API.call('editarMovimentacao', {
                     id_movimentacao: movId,
                     tipo: tipo,
                     descricao: descricao,
                     data_prazo: prazo
-                });
+                }, 'POST', true);
+                API.invalidateRelatedCache('editarMovimentacao');
                 Utils.showToast('Movimentação atualizada.', 'success');
             } else {
                 var motivo = String(document.getElementById('mov-modal-motivo').value || '').trim();
-                await API.movimentacoes.cancelar({
+                await API.call('cancelarMovimentacao', {
                     id_movimentacao: movId,
                     motivo: motivo
-                });
+                }, 'POST', true);
+                API.invalidateRelatedCache('cancelarMovimentacao');
                 Utils.showToast('Movimentação cancelada.', 'success');
             }
 
@@ -1662,6 +1717,9 @@ function setupMovimentacaoModal() {
         } catch (e) {
             console.error(e);
             Utils.showToast(e.message || 'Erro ao salvar movimentação.', 'error');
+        } finally {
+            lockModalAction(false);
+            setButtonLoading(submitBtn, false);
         }
     });
 }
@@ -1713,11 +1771,11 @@ function setupEtiquetasModal() {
 
     if (!modal) return;
 
-    function close() { modal.classList.add('hidden'); }
+    function close() { if (modalActionInProgress) return; modal.classList.add('hidden'); }
 
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (cancelBtn) cancelBtn.addEventListener('click', close);
-    modal.addEventListener('click', function(ev) { if (ev.target === modal) close(); });
+    modal.addEventListener('click', function(ev) { if (ev.target === modal) closeModalSafe(modal); });
 
     if (addBtn) addBtn.addEventListener('click', function() {
         var value = String(input.value || '').trim();
@@ -1768,11 +1826,17 @@ function renderEtiquetasModalList() {
 async function salvarEtiquetasModal() {
     if (!currentProcessData || !currentProcessData.processo) return;
 
+    var saveBtn = document.getElementById('etiquetas-save-btn');
+
     try {
-        var result = await API.processosAdmin.salvarEtiquetas({
+        lockModalAction(true);
+        setButtonLoading(saveBtn, true, 'Salvando etiquetas...');
+
+        var result = await API.call('salvarEtiquetasProcesso', {
             id_processo: currentProcessData.processo.id,
             etiquetas: etiquetasBuffer.join(', ')
-        });
+        }, 'POST', true);
+        API.invalidateRelatedCache('salvarEtiquetasProcesso');
 
         if (result && result.processo) {
             currentProcessData.processo = result.processo;
@@ -1786,6 +1850,9 @@ async function salvarEtiquetasModal() {
     } catch (err) {
         console.error(err);
         Utils.showToast(err.message || 'Erro ao atualizar etiquetas.', 'error');
+    } finally {
+        lockModalAction(false);
+        setButtonLoading(saveBtn, false);
     }
 }
 
