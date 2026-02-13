@@ -58,7 +58,7 @@ var ProcessosService = {
     if (auth.user.perfil.toUpperCase() === ENUMS.PERFIL.ADVOGADO) {
       var advId = String(auth.user.id || '').trim();
       resultado = resultado.filter(function(p) {
-        return String(p.advogado_id || '').trim() === advId;
+        return ProcessosService._isAdvogadoAtribuidoAoProcesso(p, advId);
       });
     }
 
@@ -309,8 +309,7 @@ var ProcessosService = {
     // ADVOGADO só pode acessar processo atribuído a ele
     if (auth.user.perfil.toUpperCase() === ENUMS.PERFIL.ADVOGADO) {
       var advId = String(auth.user.id || '').trim();
-      var procAdvId = String(processo.advogado_id || '').trim();
-      if (procAdvId !== advId) {
+      if (!this._isAdvogadoAtribuidoAoProcesso(processo, advId)) {
         throw new Error('Você não tem acesso a este processo.');
       }
     }
@@ -468,7 +467,7 @@ var ProcessosService = {
     if (auth.user.perfil.toUpperCase() === ENUMS.PERFIL.ADVOGADO) {
       var advId = String(auth.user.id || '').trim();
       processos = processos.filter(function(p) {
-        return String(p.advogado_id || '').trim() === advId;
+        return ProcessosService._isAdvogadoAtribuidoAoProcesso(p, advId);
       });
     }
 
@@ -518,9 +517,43 @@ var ProcessosService = {
 
     clone.etiquetas = this._parseEtiquetas(clone.etiquetas);
     clone.etiquetas_texto = clone.etiquetas.join(', ');
-    clone.responsavel_nome = this._resolverNomeResponsavel(clone.advogado_id, clone.criado_por);
+    clone.advogado_ids = this._parseAdvogadoIds(clone.advogado_ids || clone.advogado_id || '');
+    clone.responsaveis_nomes = this._resolverNomesResponsaveis(clone.advogado_ids);
+    clone.responsavel_nome = clone.responsaveis_nomes.length
+      ? clone.responsaveis_nomes.join(', ')
+      : this._resolverNomeResponsavel('', clone.criado_por);
 
     return clone;
+  },
+
+  _parseAdvogadoIds: function(raw) {
+    var texto = String(raw || '').trim();
+    if (!texto) return [];
+
+    return texto.split(',')
+      .map(function(item) { return String(item || '').trim(); })
+      .filter(function(item) { return !!item; });
+  },
+
+  _isAdvogadoAtribuidoAoProcesso: function(processo, advogadoId) {
+    var id = String(advogadoId || '').trim();
+    if (!id || !processo) return false;
+
+    var lista = this._parseAdvogadoIds(processo.advogado_ids || processo.advogado_id || '');
+    return lista.indexOf(id) !== -1;
+  },
+
+  _resolverNomesResponsaveis: function(advogadoIds) {
+    var lista = Array.isArray(advogadoIds) ? advogadoIds : this._parseAdvogadoIds(advogadoIds);
+    if (!lista.length) return [];
+
+    var nomes = [];
+    lista.forEach(function(id) {
+      var advogado = Database.findById(CONFIG.SHEET_NAMES.USUARIOS, id);
+      if (advogado && advogado.nome) nomes.push(String(advogado.nome));
+    });
+
+    return nomes;
   },
 
   _resolverNomeResponsavel: function(advogadoId, fallbackEmail) {

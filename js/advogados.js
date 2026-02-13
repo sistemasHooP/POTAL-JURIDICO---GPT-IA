@@ -432,13 +432,16 @@ function renderProcessosAtribuicao(filtro) {
 
     var html = '';
     lista.forEach(function(proc) {
-        var isAtribuido = String(proc.advogado_id || '').trim() === String(advogadoSelecionadoId).trim();
+        var procAdvIds = Array.isArray(proc.advogado_ids) ? proc.advogado_ids.map(function(i){ return String(i || '').trim(); }).filter(function(i){ return !!i; }) : [];
+        if (!procAdvIds.length && proc.advogado_id) procAdvIds = [String(proc.advogado_id).trim()];
+
+        var isAtribuido = procAdvIds.indexOf(String(advogadoSelecionadoId).trim()) !== -1;
         if (isAtribuido) atribuidos++;
 
-        var outroAdvogado = proc.advogado_id && !isAtribuido;
+        var outroAdvogado = procAdvIds.length > 0 && !isAtribuido;
         var outroAdvogadoNome = '';
         if (outroAdvogado) {
-            var advAlocado = advogadosData.find(function(a) { return String(a.id || '') === String(proc.advogado_id || ''); });
+            var advAlocado = advogadosData.find(function(a) { return procAdvIds.indexOf(String(a.id || '')) !== -1; });
             outroAdvogadoNome = advAlocado && advAlocado.nome ? advAlocado.nome : 'Outro advogado';
         }
         var statusClass = '';
@@ -497,13 +500,26 @@ function renderProcessosAtribuicao(filtro) {
 // =============================================================================
 window.toggleAtribuicao = function(processoId, atribuir) {
     if (processosModalBusy) return;
-    var advId = atribuir ? advogadoSelecionadoId : '';
     var statusEl = document.getElementById('atrib-status');
 
     // Optimistic update
     var proc = processosAtribuicaoData.find(function(p) { return p.id === processoId; });
+    var prevIds = [];
+    var nextIds = [];
     if (proc) {
-        proc.advogado_id = advId;
+        prevIds = Array.isArray(proc.advogado_ids) ? proc.advogado_ids.slice() : [];
+        if (!prevIds.length && proc.advogado_id) prevIds = [String(proc.advogado_id).trim()];
+
+        nextIds = prevIds.slice();
+
+        if (atribuir) {
+            if (nextIds.indexOf(String(advogadoSelecionadoId)) === -1) nextIds.push(String(advogadoSelecionadoId));
+        } else {
+            nextIds = nextIds.filter(function(i) { return String(i) !== String(advogadoSelecionadoId); });
+        }
+
+        proc.advogado_ids = nextIds.slice();
+        proc.advogado_id = proc.advogado_ids.length ? proc.advogado_ids[0] : '';
         renderProcessosAtribuicao(
             (document.getElementById('busca-processo-atrib') || {}).value || ''
         );
@@ -511,7 +527,7 @@ window.toggleAtribuicao = function(processoId, atribuir) {
 
     processosModalBusy = true;
     if (statusEl) statusEl.innerHTML = '<span class="inline-flex items-center gap-1 text-indigo-600"><svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Atualizando atribuição...</span>';
-    API.advogados.atribuirProcesso({ processo_id: processoId, advogado_id: advId })
+    API.advogados.atribuirProcesso({ processo_id: processoId, advogado_id: advogadoSelecionadoId, atribuir: !!atribuir })
         .then(function() {
             Utils.showToast(atribuir ? "Processo atribuído!" : "Processo desatribuído!", "success");
             renderProcessosAtribuicao((document.getElementById('busca-processo-atrib') || {}).value || '');
@@ -519,7 +535,8 @@ window.toggleAtribuicao = function(processoId, atribuir) {
         .catch(function(err) {
             // Revert
             if (proc) {
-                proc.advogado_id = atribuir ? '' : advogadoSelecionadoId;
+                proc.advogado_ids = prevIds.slice();
+                proc.advogado_id = proc.advogado_ids.length ? proc.advogado_ids[0] : '';
                 renderProcessosAtribuicao();
             }
             Utils.showToast("Erro: " + (err.message || 'Falha na atribuição.'), "error");
