@@ -133,10 +133,15 @@ const Auth = {
                     }
                 });
 
-                if (total > 0 && !sessionStorage.getItem('rpps_dashboard_notif_seen')) {
+                var storageKey = 'rpps_dashboard_notif_last_total';
+                var lastTotal = Number(sessionStorage.getItem(storageKey) || '0');
+                if (!Number.isFinite(lastTotal) || lastTotal < 0) lastTotal = 0;
+
+                if (total > 0 && total > lastTotal) {
                     Utils.showToast('Você tem ' + total + ' prazo(s). Veja no Dashboard.', 'warning');
-                    sessionStorage.setItem('rpps_dashboard_notif_seen', '1');
                 }
+
+                sessionStorage.setItem(storageKey, String(total));
             }, true).catch(function() {});
         } catch (e) {
             console.warn('Falha ao atualizar indicador de notificações do dashboard', e);

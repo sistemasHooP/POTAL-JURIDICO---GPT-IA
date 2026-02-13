@@ -90,15 +90,11 @@ document.addEventListener('DOMContentLoaded', function() {
             senhaInput.readOnly = true;
 
             try {
-                // 1. TELA DE SINCRONIZAÇÃO (Loader Principal Personalizado)
-                Utils.showLoading("Sincronizando banco de dados...", "database");
-
-                // 2. Autenticação (Modo Silencioso)
-                const response = await API.call('login', { email, senha }, 'POST', true);
+                // 1. Autenticação (API controla loading pelo LOADING_PROFILE)
+                const response = await API.call('login', { email, senha }, 'POST', false);
 
                 // Se chegou aqui, login ok - salva sessão ANTES de redirecionar
                 Auth.saveSession(response);
-                Utils.hideLoading();
                 Utils.showToast("Login realizado com sucesso!", "success");
 
                 // Redireciona após breve delay para garantir persistência da sessão
@@ -121,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             } catch (error) {
                 console.error("Falha no login:", error);
-                Utils.hideLoading();
 
                 // Destrava o formulário para nova tentativa
                 loginEmAndamento = false;

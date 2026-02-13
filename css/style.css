@@ -100,7 +100,8 @@ body.page-shell main {
 }
 
 /* ===== Cartões e superfícies modernas ===== */
-.page-shell .bg-white {
+.page-shell .surface-card,
+.page-shell main .bg-white {
     border: 1px solid rgba(226, 232, 240, 0.92);
     box-shadow: var(--shadow-sm);
 }
@@ -306,7 +307,8 @@ body.page-shell {
 
 .page-shell main > div,
 .page-shell main > section,
-.page-shell .bg-white {
+.page-shell .surface-card,
+.page-shell main .bg-white {
     border-radius: 18px !important;
 }
 
