@@ -220,7 +220,7 @@ const API = {
                 Utils.hideLoading();
             }
             if (useSyncStatus) {
-                Utils.hideSyncStatus();
+                this._closeSyncStatus();
             }
         }
     },
