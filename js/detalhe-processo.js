@@ -20,6 +20,10 @@ function isMovimentacaoCancelada(mov) {
     return !!(mov && mov.cancelado_em);
 }
 
+function isMovimentacaoCancelada(mov) {
+    return !!(mov && mov.cancelado_em);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
 
     if (!Auth.protectRoute()) return;
