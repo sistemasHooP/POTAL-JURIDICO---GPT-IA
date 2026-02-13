@@ -987,6 +987,10 @@ function createTimelineItem(mov, refMap, movsById) {
     const badgeCancelamento = movCancelada
         ? `<div class="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700"><strong>Movimentação cancelada</strong>${mov.cancelado_motivo ? ': ' + Utils.escapeHtml(mov.cancelado_motivo) : ''}</div>`
         : '';
+    const movEditada = !!(mov.editado_em || Number(mov.versao_edicao || 0) > 0);
+    const badgeEdicao = movEditada
+        ? `<div class="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700"><strong>Movimentação editada</strong>${mov.editado_em ? ' em ' + Utils.formatDate(mov.editado_em) : ''}${mov.editado_por ? ' por ' + Utils.escapeHtml(String(mov.editado_por).split('@')[0]) : ''}${Number(mov.versao_edicao || 0) > 0 ? ' (v' + Number(mov.versao_edicao) + ')' : ''}</div>`
+        : '';
     const classeTituloCancelada = movCancelada ? 'line-through text-slate-400' : 'text-slate-800';
     const classeDescricaoCancelada = movCancelada ? 'line-through text-slate-400' : 'text-slate-600';
 
@@ -1016,6 +1020,7 @@ function createTimelineItem(mov, refMap, movsById) {
             </div>
 
             ${badgeCancelamento}
+            ${badgeEdicao}
 
             ${anexoHtml}
         </div>
@@ -1295,6 +1300,13 @@ window.exportarRelatorio = function() {
         const badgeCancelamentoRelatorio = movCancelada
             ? '<br><span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:999px;font-size:10px;font-weight:700;">CANCELADA</span>'
             : '';
+        const movEditada = !!(mov.editado_em || Number(mov.versao_edicao || 0) > 0);
+        const badgeEdicaoRelatorio = movEditada
+            ? '<br><span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:999px;font-size:10px;font-weight:700;">EDITADA' + (Number(mov.versao_edicao || 0) > 0 ? ' (v' + Number(mov.versao_edicao) + ')' : '') + '</span>'
+            : '';
+        const infoEdicaoRelatorio = movEditada
+            ? '<br><em style="font-size:11px;color:#92400e;">Edição: ' + (mov.editado_em ? Utils.formatDate(mov.editado_em) : '-') + (mov.editado_por ? ' por ' + Utils.escapeHtml(String(mov.editado_por).split('@')[0]) : '') + '</em>'
+            : '';
 
         movsHtml += `
             <tr style="border-bottom:1px solid #e2e8f0;${movCancelada ? 'background:#f8fafc;' : ''}">
@@ -1303,11 +1315,12 @@ window.exportarRelatorio = function() {
                     <span style="font-size:12px;color:#64748b;">${Utils.formatDate(mov.data_movimentacao)}</span>
                 </td>
                 <td style="padding:10px;vertical-align:top;width:140px;">
-                    <strong style="${estiloTextoCancelado}">${Utils.escapeHtml(mov.tipo)}</strong>${badgeCancelamentoRelatorio}<br>
+                    <strong style="${estiloTextoCancelado}">${Utils.escapeHtml(mov.tipo)}</strong>${badgeCancelamentoRelatorio}${badgeEdicaoRelatorio}<br>
                     <span style="font-size:11px;color:#94a3b8;">${mov.usuario_responsavel ? mov.usuario_responsavel.split('@')[0] : '-'}</span>
                 </td>
                 <td style="padding:10px;vertical-align:top;${estiloDescricaoCancelada}">
                     ${Utils.escapeHtml(mov.descricao).replace(/\n/g, '<br>')}
+                    ${infoEdicaoRelatorio}
                     ${refStr}
                     ${prazoStr}
                     ${anexoStr}
@@ -1325,6 +1338,10 @@ window.exportarRelatorio = function() {
                 <p style="margin:0;font-size:13px;color:#78350f;white-space:pre-wrap;">${Utils.escapeHtml(notas)}</p>
             </div>`;
     }
+
+    const nomesResponsaveis = Array.isArray(p.responsaveis_nomes) && p.responsaveis_nomes.length
+        ? p.responsaveis_nomes.join(', ')
+        : (p.responsavel_nome || '-');
 
     const relatorioHtml = `
 <!DOCTYPE html>
@@ -1392,6 +1409,10 @@ window.exportarRelatorio = function() {
         <div class="info-item">
             <div class="info-label">Email Notificacoes</div>
             <div class="info-value">${Utils.escapeHtml(p.email_interessado || '-')}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Advogado(s) Responsável(is)</div>
+            <div class="info-value">${Utils.escapeHtml(nomesResponsaveis)}</div>
         </div>
         <div class="info-item" style="grid-column: 1 / -1;">
             <div class="info-label">Observacoes Iniciais</div>
