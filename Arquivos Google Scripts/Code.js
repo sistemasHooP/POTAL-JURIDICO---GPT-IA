@@ -39,14 +39,19 @@ function doPost(e) {
     }
 
     var actionName = payload.action || 'SEM_ACTION';
+    payload.action = actionName;
+
     Logger.log('[Code] =============================================');
     Logger.log('[Code] Requisição recebida: ' + actionName);
     Logger.log('[Code] Origem: ' + (payload.origem || 'desconhecida'));
 
-    // Origem (apenas log de aviso)
-    var origem = payload.origem || '';
-    if (origem && CONFIG.SECURITY.ALLOWED_ORIGINS.indexOf(origem) === -1) {
-      Logger.log('[Code] AVISO: Origem fora da allowlist: ' + origem);
+    // Hardening de origem: bloqueia ações não públicas fora da allowlist
+    var origem = String(payload.origem || '').trim();
+    var origemPermitida = origem && CONFIG.SECURITY.ALLOWED_ORIGINS.indexOf(origem) !== -1;
+
+    if (!_isPublicAction(actionName) && !origemPermitida) {
+      Logger.log('[Code] BLOQUEADO: Origem não autorizada para ação sensível: ' + actionName + ' | origem=' + (origem || 'ausente'));
+      return _createResponse('error', 'Origem não autorizada para esta operação.');
     }
 
     // Rate limit API geral (token/email ou fallback)
@@ -57,8 +62,11 @@ function doPost(e) {
         return _createResponse('error', rate.mensagem || 'Muitas requisições. Aguarde e tente novamente.');
       }
     } catch (rateError) {
-      Logger.log('[Code] AVISO RateLimiter indisponível: ' + rateError);
-      // fail-open
+      Logger.log('[Code] ERRO RateLimiter: ' + rateError);
+      if (_isCriticalAction(actionName)) {
+        return _createResponse('error', 'Serviço temporariamente indisponível. Tente novamente em instantes.');
+      }
+      Logger.log('[Code] RateLimiter em fail-open para ação não crítica: ' + actionName);
     }
 
     var result = _routeAction(payload);
@@ -74,6 +82,43 @@ function doPost(e) {
     Logger.log('[Code] Stack: ' + (error.stack || 'N/A'));
     return _createResponse('error', error.message || 'Erro interno do servidor.');
   }
+}
+
+
+/**
+ * Ações públicas/baixa criticidade (permite origem ausente).
+ * @private
+ */
+function _isPublicAction(action) {
+  var publicActions = {
+    'ping': true,
+    'healthCheck': true
+  };
+  return !!publicActions[String(action || '')];
+}
+
+/**
+ * Ações críticas: se RateLimiter falhar, deve ser fail-safe.
+ * @private
+ */
+function _isCriticalAction(action) {
+  var criticalActions = {
+    'login': true,
+    'solicitarCodigoCliente': true,
+    'validarCodigoCliente': true,
+    'cadastrarCliente': true,
+    'atualizarCliente': true,
+    'criarProcesso': true,
+    'novaMovimentacao': true,
+    'salvarNotasProcesso': true,
+    'cadastrarAdvogado': true,
+    'atualizarAdvogado': true,
+    'atribuirProcesso': true,
+    'uploadArquivo': true,
+    'downloadArquivo': true,
+    'downloadArquivoCliente': true
+  };
+  return !!criticalActions[String(action || '')];
 }
 
 /**
@@ -112,9 +157,9 @@ function _routeAction(payload) {
 
     // Clientes
     case 'buscarClientePorCPF':
-      var cpfBusca = Utils.normalizarCPF(payload.cpf);
-      if (!cpfBusca) {
-        throw new Error('CPF inválido.');
+      var cpfBusca = Utils.normalizarDocumento(payload.cpf);
+      if (!cpfBusca || (cpfBusca.length !== 11 && cpfBusca.length !== 14)) {
+        throw new Error('CPF/CNPJ inválido.');
       }
 
       var clienteEncontrado = ClienteService.buscarPorCPF(cpfBusca);
@@ -168,6 +213,9 @@ function _routeAction(payload) {
 
     case 'getDashboard':
       return ProcessosService.getDashboardStats(payload);
+
+    case 'getNotificacoesPrazos':
+      return ProcessosService.getNotificacoesPrazos(payload);
 
     case 'salvarNotasProcesso':
       return ProcessosService.salvarNotas(payload);
