@@ -29,13 +29,17 @@ var AdvogadoService = {
 
     var usuarios = Database.read(CONFIG.SHEET_NAMES.USUARIOS);
 
-    // PRESIDENTE vê ADMIN + ADVOGADO; ADMIN vê apenas ADVOGADO
+    // PRESIDENTE vê ADMIN + ADVOGADO;
+    // ADMIN vê ADVOGADOS + ele próprio (para se habilitar em processos quando necessário)
+    var usuarioLogadoId = String(auth.user.id || '').trim();
     var advogados = usuarios.filter(function(u) {
       var p = (u.perfil || '').toUpperCase();
       if (perfil === ENUMS.PERFIL.PRESIDENTE) {
         return p === ENUMS.PERFIL.ADVOGADO || p === ENUMS.PERFIL.ADMIN;
       }
-      return p === ENUMS.PERFIL.ADVOGADO;
+      if (p === ENUMS.PERFIL.ADVOGADO) return true;
+      if (p === ENUMS.PERFIL.ADMIN && String(u.id || '').trim() === usuarioLogadoId) return true;
+      return false;
     });
 
     // Retorna sem expor a senha

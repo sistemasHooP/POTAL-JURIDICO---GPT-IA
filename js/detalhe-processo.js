@@ -1290,17 +1290,23 @@ window.exportarRelatorio = function() {
             anexoStr = '<br><em style="color:#2563eb;">Anexo: ' + Utils.escapeHtml(mov.anexo_nome) + '</em>';
         }
 
+        const estiloTextoCancelado = movCancelada ? 'text-decoration:line-through;color:#94a3b8;' : 'color:#1e293b;';
+        const estiloDescricaoCancelada = movCancelada ? 'text-decoration:line-through;color:#94a3b8;' : '';
+        const badgeCancelamentoRelatorio = movCancelada
+            ? '<br><span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:999px;font-size:10px;font-weight:700;">CANCELADA</span>'
+            : '';
+
         movsHtml += `
-            <tr style="border-bottom:1px solid #e2e8f0;">
+            <tr style="border-bottom:1px solid #e2e8f0;${movCancelada ? 'background:#f8fafc;' : ''}">
                 <td style="padding:10px;vertical-align:top;width:30px;color:#94a3b8;font-weight:bold;">${idx + 1}</td>
                 <td style="padding:10px;vertical-align:top;width:100px;">
                     <span style="font-size:12px;color:#64748b;">${Utils.formatDate(mov.data_movimentacao)}</span>
                 </td>
                 <td style="padding:10px;vertical-align:top;width:140px;">
-                    <strong style="color:#1e293b;">${Utils.escapeHtml(mov.tipo)}</strong><br>
+                    <strong style="${estiloTextoCancelado}">${Utils.escapeHtml(mov.tipo)}</strong>${badgeCancelamentoRelatorio}<br>
                     <span style="font-size:11px;color:#94a3b8;">${mov.usuario_responsavel ? mov.usuario_responsavel.split('@')[0] : '-'}</span>
                 </td>
-                <td style="padding:10px;vertical-align:top;">
+                <td style="padding:10px;vertical-align:top;${estiloDescricaoCancelada}">
                     ${Utils.escapeHtml(mov.descricao).replace(/\n/g, '<br>')}
                     ${refStr}
                     ${prazoStr}
