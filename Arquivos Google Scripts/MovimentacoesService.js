@@ -71,7 +71,13 @@ var MovimentacoesService = {
       anexo_link: linkArquivo,
       anexo_nome: nomeArquivoSalvo,
       data_prazo: payload.data_prazo ? new Date(payload.data_prazo) : '',
-      mov_referencia_id: payload.mov_referencia_id ? String(payload.mov_referencia_id).trim() : ''
+      mov_referencia_id: payload.mov_referencia_id ? String(payload.mov_referencia_id).trim() : '',
+      cancelado_em: '',
+      cancelado_por: '',
+      cancelado_motivo: '',
+      editado_em: '',
+      editado_por: '',
+      versao_edicao: 0
     };
 
     var movSalva = Database.create(CONFIG.SHEET_NAMES.MOVIMENTACOES, novaMov);
@@ -147,6 +153,104 @@ var MovimentacoesService = {
   },
 
   /**
+   * Edita uma movimentação sem apagar histórico.
+   * @param {Object} payload - { id_movimentacao, tipo, descricao, data_prazo?, token }
+   */
+  editarMovimentacao: function(payload) {
+    var auth = AuthService.verificarToken(payload);
+    if (!auth.valido) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+
+    if (!AuthService.isGestor(auth.user.perfil)) {
+      throw new Error('Acesso negado. Apenas gestores podem editar movimentações.');
+    }
+
+    var movId = String(payload.id_movimentacao || '').trim();
+    if (!movId) throw new Error('ID da movimentação não fornecido.');
+
+    var movimentacao = Database.findById(CONFIG.SHEET_NAMES.MOVIMENTACOES, movId);
+    if (!movimentacao) throw new Error('Movimentação não encontrada.');
+
+    if (movimentacao.cancelado_em) {
+      throw new Error('Movimentação cancelada não pode ser editada.');
+    }
+
+    var updates = {};
+
+    if (payload.tipo !== undefined && payload.tipo !== null) {
+      var tipo = String(payload.tipo || '').trim();
+      if (!tipo) throw new Error('Tipo inválido.');
+      updates.tipo = tipo;
+    }
+
+    if (payload.descricao !== undefined && payload.descricao !== null) {
+      var descricao = String(payload.descricao || '').trim();
+      if (!descricao) throw new Error('Descrição inválida.');
+      updates.descricao = descricao;
+    }
+
+    if (payload.hasOwnProperty('data_prazo')) {
+      updates.data_prazo = payload.data_prazo ? new Date(payload.data_prazo) : '';
+    }
+
+    updates.editado_em = new Date();
+    updates.editado_por = auth.user.email;
+    updates.versao_edicao = Number(movimentacao.versao_edicao || 0) + 1;
+
+    var movAtualizada = Database.update(CONFIG.SHEET_NAMES.MOVIMENTACOES, movId, updates);
+
+    // Recalcula prazo do processo para manter coerência
+    var proximoPrazo = this._calcularProximoPrazoPendente(movimentacao.id_processo, null);
+    Database.update(CONFIG.SHEET_NAMES.PROCESSOS, movimentacao.id_processo, {
+      data_prazo: proximoPrazo ? proximoPrazo : ''
+    });
+
+    return movAtualizada;
+  },
+
+  /**
+   * Cancela movimentação sem exclusão (auditoria).
+   * @param {Object} payload - { id_movimentacao, motivo, token }
+   */
+  cancelarMovimentacao: function(payload) {
+    var auth = AuthService.verificarToken(payload);
+    if (!auth.valido) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+
+    if (!AuthService.isGestor(auth.user.perfil)) {
+      throw new Error('Acesso negado. Apenas gestores podem cancelar movimentações.');
+    }
+
+    var movId = String(payload.id_movimentacao || '').trim();
+    if (!movId) throw new Error('ID da movimentação não fornecido.');
+
+    var movimentacao = Database.findById(CONFIG.SHEET_NAMES.MOVIMENTACOES, movId);
+    if (!movimentacao) throw new Error('Movimentação não encontrada.');
+
+    if (movimentacao.cancelado_em) {
+      throw new Error('Movimentação já está cancelada.');
+    }
+
+    var motivo = String(payload.motivo || '').trim();
+    if (!motivo) motivo = 'Cancelada manualmente pelo responsável.';
+
+    var movAtualizada = Database.update(CONFIG.SHEET_NAMES.MOVIMENTACOES, movId, {
+      cancelado_em: new Date(),
+      cancelado_por: auth.user.email,
+      cancelado_motivo: motivo
+    });
+
+    var proximoPrazo = this._calcularProximoPrazoPendente(movimentacao.id_processo, null);
+    Database.update(CONFIG.SHEET_NAMES.PROCESSOS, movimentacao.id_processo, {
+      data_prazo: proximoPrazo ? proximoPrazo : ''
+    });
+
+    return movAtualizada;
+  },
+
+  /**
    * Calcula o próximo prazo pendente (não respondido) de um processo.
    * Retorna a data mais próxima do futuro, ou a mais recente se todas estão vencidas.
    * @private
@@ -160,6 +264,8 @@ var MovimentacoesService = {
     // Monta set de IDs que foram respondidos (tem alguma mov apontando para eles)
     var idsRespondidos = {};
     movimentacoes.forEach(function(m) {
+      if (m.cancelado_em) return;
+
       var refId = m.mov_referencia_id;
       if (refId && String(refId).trim() !== '') {
         idsRespondidos[String(refId)] = true;
@@ -168,6 +274,7 @@ var MovimentacoesService = {
 
     // Filtra: tem prazo, NÃO foi respondido, NÃO é a movimentação recém-criada
     var pendentes = movimentacoes.filter(function(m) {
+      if (m.cancelado_em) return false;
       if (!m.data_prazo) return false;
       if (m.id && String(m.id) === String(ignorarMovId)) return false;
       if (m.id && idsRespondidos[String(m.id)]) return false;

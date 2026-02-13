@@ -14,6 +14,14 @@ let todosProcessos = [];
 let abaAtiva = 'todos'; // 'todos' ou 'consolidados'
 let clientesExpandidos = {}; // { nomeCliente: true/false }
 
+function renderEtiquetas(etiquetas) {
+    var lista = Array.isArray(etiquetas) ? etiquetas : String(etiquetas || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+    if (!lista.length) return '';
+    return '<div class="mt-1.5 flex flex-wrap gap-1">' + lista.slice(0,4).map(function(tag){
+        return '<span class="px-1.5 py-0.5 text-[10px] rounded border bg-purple-50 text-purple-700 border-purple-200 font-semibold">' + Utils.escapeHtml(tag) + '</span>';
+    }).join('') + '</div>';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
 
     // 1. Protecao de Rota
@@ -254,6 +262,8 @@ function renderTable(lista) {
         const dataCriacao = Utils.formatDate(p.created_at).split(' ')[0];
         const dataEntrada = p.data_entrada ? Utils.formatDate(p.data_entrada).split(' ')[0] : dataCriacao;
         const statusDesc = Utils.getStatusLabel(p.status);
+        const responsavel = p.responsavel_nome || '-';
+        const etiquetasHtml = renderEtiquetas(p.etiquetas);
 
         // --- LOGICA DE PRAZO VISUAL ---
         let prazoHtml = '';
@@ -304,6 +314,8 @@ function renderTable(lista) {
                     <span class="text-xs text-slate-500 md:hidden mt-1 font-medium uppercase tracking-wide">
                         ${p.parte_nome}
                     </span>
+                    <span class="text-[11px] text-slate-400 md:hidden">Resp: ${Utils.escapeHtml(responsavel)}</span>
+                    <div class="md:hidden">${etiquetasHtml}</div>
                     <div class="md:hidden">${prazoHtml}</div>
                 </div>
             </td>
@@ -311,6 +323,8 @@ function renderTable(lista) {
                 <div class="flex flex-col">
                     <span class="text-sm font-medium text-slate-900">${p.parte_nome}</span>
                     <span class="text-xs text-slate-500">${p.tipo}</span>
+                    <span class="text-[11px] text-slate-400">Responsável: ${Utils.escapeHtml(responsavel)}</span>
+                    ${etiquetasHtml}
                 </div>
             </td>
             <td class="px-6 py-4">
@@ -477,6 +491,8 @@ function renderConsolidados() {
                                 prazoBadge +
                             '</div>' +
                             '<p class="text-xs text-slate-500 mt-0.5">' + Utils.escapeHtml(p.tipo || '-') + ' &middot; Entrada: ' + Utils.escapeHtml(data) + '</p>' +
+                            '<p class="text-[11px] text-slate-400 mt-0.5">Responsável: ' + Utils.escapeHtml(p.responsavel_nome || '-') + '</p>' +
+                            (renderEtiquetas(p.etiquetas)) +
                         '</div>' +
                         '<div class="flex items-center gap-2 ml-3 shrink-0">' +
                             '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ' + badgeClass + '">' + Utils.escapeHtml(p.status || '-') + '</span>' +

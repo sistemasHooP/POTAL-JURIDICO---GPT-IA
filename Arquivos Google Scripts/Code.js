@@ -110,7 +110,10 @@ function _isCriticalAction(action) {
     'atualizarCliente': true,
     'criarProcesso': true,
     'novaMovimentacao': true,
+    'editarMovimentacao': true,
+    'cancelarMovimentacao': true,
     'salvarNotasProcesso': true,
+    'salvarEtiquetasProcesso': true,
     'cadastrarAdvogado': true,
     'atualizarAdvogado': true,
     'atribuirProcesso': true,
@@ -220,9 +223,18 @@ function _routeAction(payload) {
     case 'salvarNotasProcesso':
       return ProcessosService.salvarNotas(payload);
 
+    case 'salvarEtiquetasProcesso':
+      return ProcessosService.salvarEtiquetas(payload);
+
     // Movimentações
     case 'novaMovimentacao':
       return MovimentacoesService.novaMovimentacao(payload);
+
+    case 'editarMovimentacao':
+      return MovimentacoesService.editarMovimentacao(payload);
+
+    case 'cancelarMovimentacao':
+      return MovimentacoesService.cancelarMovimentacao(payload);
 
     // Advogados (Gerenciamento)
     case 'listarAdvogados':

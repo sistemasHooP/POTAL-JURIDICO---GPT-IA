@@ -58,7 +58,7 @@ var ProcessosService = {
     if (auth.user.perfil.toUpperCase() === ENUMS.PERFIL.ADVOGADO) {
       var advId = String(auth.user.id || '').trim();
       resultado = resultado.filter(function(p) {
-        return String(p.advogado_id || '').trim() === advId;
+        return ProcessosService._isAdvogadoAtribuidoAoProcesso(p, advId);
       });
     }
 
@@ -67,7 +67,7 @@ var ProcessosService = {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    return resultado;
+    return this._enriquecerProcessos(resultado);
   },
 
   /**
@@ -210,7 +210,18 @@ var ProcessosService = {
     // 5) Cria pasta no Drive
     var infoPasta = DriveService.criarPastaProcesso(numeroProcesso, parteNome);
 
-    // 6) Monta e salva processo
+    // 6) Define responsabilidade inicial
+    var perfil = String(auth.user.perfil || '').toUpperCase();
+    var advogadoResponsavelId = '';
+    if (perfil === ENUMS.PERFIL.ADVOGADO) {
+      // Advogado abre processo já vinculado a si.
+      // Alterações de responsável ficam no fluxo de gestão (ADMIN/PRESIDENTE).
+      advogadoResponsavelId = String(auth.user.id || '').trim();
+    } else {
+      advogadoResponsavelId = String(payload.advogado_id || '').trim();
+    }
+
+    // 7) Monta e salva processo
     var novoProcesso = {
       numero_processo: numeroProcesso,
       parte_nome: parteNome,
@@ -222,13 +233,16 @@ var ProcessosService = {
       id_pasta_drive: infoPasta.id,
       link_pasta: infoPasta.url,
       criado_por: auth.user.email,
+      advogado_id: advogadoResponsavelId,
+      advogado_ids: advogadoResponsavelId,
       descricao: String(payload.descricao || '').trim(),
-      data_prazo: ''
+      data_prazo: '',
+      etiquetas: this._normalizarEtiquetasTexto(payload.etiquetas || '')
     };
 
     var processoSalvo = Database.create(CONFIG.SHEET_NAMES.PROCESSOS, novoProcesso);
 
-    // 7) Movimentação inicial
+    // 8) Movimentação inicial
     Database.create(CONFIG.SHEET_NAMES.MOVIMENTACOES, {
       id_processo: processoSalvo.id,
       tipo: ENUMS.TIPO_MOVIMENTACAO.INICIAL,
@@ -237,7 +251,7 @@ var ProcessosService = {
       usuario_responsavel: auth.user.email
     });
 
-    // 8) Auditoria
+    // 9) Auditoria
     var detalhesLog = 'Processo ' + numeroProcesso + ' criado.';
     if (clienteId) {
       detalhesLog += ' Vinculado ao cliente ID: ' + clienteId;
@@ -245,7 +259,42 @@ var ProcessosService = {
 
     Utils.logAction(auth.user.email, ENUMS.ACOES_LOG.CRIAR_PROCESSO, detalhesLog);
 
-    return processoSalvo;
+    return this._enriquecerProcesso(processoSalvo);
+  },
+
+  /**
+   * Salva etiquetas/lembretes do processo.
+   * @param {Object} payload - { id_processo, etiquetas, token }
+   */
+  salvarEtiquetas: function(payload) {
+    var auth = AuthService.verificarToken(payload);
+    if (!auth.valido) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+
+    if (!AuthService.isGestor(auth.user.perfil)) {
+      throw new Error('Acesso negado.');
+    }
+
+    var idProcesso = String(payload.id_processo || '').trim();
+    if (!idProcesso) {
+      throw new Error('ID do processo não fornecido.');
+    }
+
+    var processo = Database.findById(CONFIG.SHEET_NAMES.PROCESSOS, idProcesso);
+    if (!processo) {
+      throw new Error('Processo não encontrado.');
+    }
+
+    var etiquetasTexto = this._normalizarEtiquetasTexto(payload.etiquetas || '');
+    var atualizado = Database.update(CONFIG.SHEET_NAMES.PROCESSOS, idProcesso, {
+      etiquetas: etiquetasTexto
+    });
+
+    return {
+      salvo: true,
+      processo: this._enriquecerProcesso(atualizado)
+    };
   },
 
   /**
@@ -272,8 +321,7 @@ var ProcessosService = {
     // ADVOGADO só pode acessar processo atribuído a ele
     if (auth.user.perfil.toUpperCase() === ENUMS.PERFIL.ADVOGADO) {
       var advId = String(auth.user.id || '').trim();
-      var procAdvId = String(processo.advogado_id || '').trim();
-      if (procAdvId !== advId) {
+      if (!this._isAdvogadoAtribuidoAoProcesso(processo, advId)) {
         throw new Error('Você não tem acesso a este processo.');
       }
     }
@@ -322,7 +370,7 @@ var ProcessosService = {
     }
 
     return {
-      processo: processo,
+      processo: this._enriquecerProcesso(processo),
       movimentacoes: movimentacoes,
       cliente: clienteVinculado
     };
@@ -390,6 +438,8 @@ var ProcessosService = {
       // janela de notificação: vencidos até 30 dias e próximos 30 dias
       if (diffDias < -30 || diffDias > 30) return;
 
+      var processoEnriquecido = ProcessosService._enriquecerProcesso(proc);
+
       notificacoes.push({
         id: proc.id,
         numero_processo: proc.numero_processo || 'S/N',
@@ -397,7 +447,9 @@ var ProcessosService = {
         tipo: proc.tipo || '-',
         status: proc.status || '-',
         data_prazo: prazoDate,
-        diff_dias: diffDias
+        diff_dias: diffDias,
+        responsavel_nome: processoEnriquecido.responsavel_nome,
+        etiquetas: processoEnriquecido.etiquetas
       });
     });
 
@@ -427,7 +479,7 @@ var ProcessosService = {
     if (auth.user.perfil.toUpperCase() === ENUMS.PERFIL.ADVOGADO) {
       var advId = String(auth.user.id || '').trim();
       processos = processos.filter(function(p) {
-        return String(p.advogado_id || '').trim() === advId;
+        return ProcessosService._isAdvogadoAtribuidoAoProcesso(p, advId);
       });
     }
 
@@ -455,8 +507,98 @@ var ProcessosService = {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    stats.recente = sorted.slice(0, 5);
+    stats.recente = this._enriquecerProcessos(sorted.slice(0, 5));
 
     return stats;
+  },
+
+  _enriquecerProcessos: function(lista) {
+    if (!lista || !lista.length) return [];
+    return lista.map(function(proc) {
+      return ProcessosService._enriquecerProcesso(proc);
+    });
+  },
+
+  _enriquecerProcesso: function(processo) {
+    if (!processo) return processo;
+
+    var clone = {};
+    for (var k in processo) {
+      if (processo.hasOwnProperty(k)) clone[k] = processo[k];
+    }
+
+    clone.etiquetas = this._parseEtiquetas(clone.etiquetas);
+    clone.etiquetas_texto = clone.etiquetas.join(', ');
+    clone.advogado_ids = this._parseAdvogadoIds(clone.advogado_ids || clone.advogado_id || '');
+    clone.responsaveis_nomes = this._resolverNomesResponsaveis(clone.advogado_ids);
+    clone.responsavel_nome = clone.responsaveis_nomes.length
+      ? clone.responsaveis_nomes.join(', ')
+      : this._resolverNomeResponsavel('', clone.criado_por);
+
+    return clone;
+  },
+
+  _parseAdvogadoIds: function(raw) {
+    var texto = String(raw || '').trim();
+    if (!texto) return [];
+
+    return texto.split(',')
+      .map(function(item) { return String(item || '').trim(); })
+      .filter(function(item) { return !!item; });
+  },
+
+  _isAdvogadoAtribuidoAoProcesso: function(processo, advogadoId) {
+    var id = String(advogadoId || '').trim();
+    if (!id || !processo) return false;
+
+    var lista = this._parseAdvogadoIds(processo.advogado_ids || processo.advogado_id || '');
+    return lista.indexOf(id) !== -1;
+  },
+
+  _resolverNomesResponsaveis: function(advogadoIds) {
+    var lista = Array.isArray(advogadoIds) ? advogadoIds : this._parseAdvogadoIds(advogadoIds);
+    if (!lista.length) return [];
+
+    var nomes = [];
+    lista.forEach(function(id) {
+      var advogado = Database.findById(CONFIG.SHEET_NAMES.USUARIOS, id);
+      if (advogado && advogado.nome) nomes.push(String(advogado.nome));
+    });
+
+    return nomes;
+  },
+
+  _resolverNomeResponsavel: function(advogadoId, fallbackEmail) {
+    var id = String(advogadoId || '').trim();
+    if (id) {
+      var advogado = Database.findById(CONFIG.SHEET_NAMES.USUARIOS, id);
+      if (advogado && advogado.nome) {
+        return String(advogado.nome);
+      }
+    }
+
+    var email = String(fallbackEmail || '').trim();
+    if (!email) return '-';
+    return email.split('@')[0];
+  },
+
+  _parseEtiquetas: function(raw) {
+    if (Array.isArray(raw)) {
+      return raw.map(function(x) { return String(x || '').trim(); }).filter(function(x) { return !!x; }).slice(0, 12);
+    }
+
+    var texto = String(raw || '').trim();
+    if (!texto) return [];
+
+    return texto
+      .split(',')
+      .map(function(item) { return String(item || '').trim(); })
+      .filter(function(item) { return !!item; })
+      .slice(0, 12);
+  },
+
+  _normalizarEtiquetasTexto: function(raw) {
+    var tags = this._parseEtiquetas(raw);
+    return tags.join(', ');
   }
 };
