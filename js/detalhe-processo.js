@@ -13,6 +13,12 @@ let currentProcessId = null;
 let currentProcessData = null;
 let currentMovimentacoes = []; // Lista de movimentações para popular dropdown
 let localReferences = {}; // Fallback temporário p/ UI otimista (2s). Dados reais vêm da API/banco.
+let modalMovimentacaoState = { mode: '', movId: '' };
+let etiquetasBuffer = [];
+
+function isMovimentacaoCancelada(mov) {
+    return !!(mov && mov.cancelado_em);
+}
 
 function isMovimentacaoCancelada(mov) {
     return !!(mov && mov.cancelado_em);
@@ -47,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFileInput();
     setupNotasInternas();
     setupFloatingButton();
+    setupMovimentacaoModal();
+    setupEtiquetasModal();
 
     const formMov = document.getElementById('form-movimentacao');
     if (formMov) {
@@ -55,7 +63,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const btnEtiquetas = document.getElementById('btn-editar-etiquetas');
     if (btnEtiquetas) {
-        btnEtiquetas.addEventListener('click', editarEtiquetasProcesso);
+        btnEtiquetas.addEventListener('click', function() {
+            abrirModalEtiquetas();
+        });
     }
 
     const tipoSelectInit = document.getElementById('mov-tipo');
@@ -250,9 +260,10 @@ function loadProcessoDetalhe(id) {
         if (elData) elData.textContent = Utils.formatDate(p.data_entrada);
 
         const elCriador = document.getElementById('proc-criador');
-        if (elCriador) elCriador.textContent = p.responsavel_nome || (p.criado_por ? p.criado_por.split('@')[0] : '-')
+        if (elCriador) elCriador.textContent = p.responsavel_nome || (p.criado_por ? p.criado_por.split('@')[0] : '-');
 
         renderClienteInfo(p);
+        renderEtiquetasProcesso(p.etiquetas);
 
         // Drive link
         const btnDrive = document.getElementById('btn-drive');
@@ -689,6 +700,24 @@ window.scrollToForm = function() {
         }, 500);
     }
 };
+
+function renderEtiquetasProcesso(etiquetas) {
+    var wrap = document.getElementById('proc-etiquetas-wrap');
+    var list = document.getElementById('proc-etiquetas-list');
+    if (!wrap || !list) return;
+
+    var tags = Array.isArray(etiquetas) ? etiquetas : String(etiquetas || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+    if (!tags.length) {
+        wrap.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    list.innerHTML = tags.map(function(tag) {
+        return '<span class="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">' + Utils.escapeHtml(tag) + '</span>';
+    }).join('');
+}
 
 // =============================================================================
 // STATUS UI
@@ -1566,61 +1595,197 @@ async function editarMovimentacao(movId) {
     var mov = (currentMovimentacoes || []).find(function(m){ return String(m.id || '') === String(movId || ''); });
     if (!mov) return Utils.showToast('Movimentação não encontrada.', 'error');
     if (isMovimentacaoCancelada(mov)) return Utils.showToast('Movimentação cancelada não pode ser editada.', 'warning');
-
-    var novoTipo = window.prompt('Editar tipo da movimentação:', mov.tipo || '');
-    if (novoTipo === null) return;
-    novoTipo = String(novoTipo || '').trim();
-    if (!novoTipo) return Utils.showToast('Tipo é obrigatório.', 'warning');
-
-    var novaDescricao = window.prompt('Editar descrição da movimentação:', mov.descricao || '');
-    if (novaDescricao === null) return;
-    novaDescricao = String(novaDescricao || '').trim();
-    if (!novaDescricao) return Utils.showToast('Descrição é obrigatória.', 'warning');
-
-    var prazoAtual = mov.data_prazo ? Utils.formatDate(mov.data_prazo).split(' ')[0] : '';
-    var novoPrazo = window.prompt('Editar prazo (DD/MM/AAAA) ou deixe em branco para limpar:', prazoAtual);
-    if (novoPrazo === null) return;
-
-    var dataPrazo = '';
-    if (novoPrazo && String(novoPrazo).trim()) {
-        var partes = String(novoPrazo).trim().split('/');
-        if (partes.length !== 3) return Utils.showToast('Data inválida. Use DD/MM/AAAA.', 'warning');
-        dataPrazo = partes[2] + '-' + partes[1].padStart(2, '0') + '-' + partes[0].padStart(2, '0');
-    }
-
-    try {
-        await API.movimentacoes.editar({
-            id_movimentacao: movId,
-            tipo: novoTipo,
-            descricao: novaDescricao,
-            data_prazo: dataPrazo
-        });
-        Utils.showToast('Movimentação atualizada.', 'success');
-        loadProcessoDetalhe(currentProcessId);
-    } catch (e) {
-        console.error(e);
-        Utils.showToast(e.message || 'Erro ao editar movimentação.', 'error');
-    }
+    abrirModalMovimentacao('editar', mov);
 }
 
 async function cancelarMovimentacao(movId) {
     var mov = (currentMovimentacoes || []).find(function(m){ return String(m.id || '') === String(movId || ''); });
     if (!mov) return Utils.showToast('Movimentação não encontrada.', 'error');
     if (isMovimentacaoCancelada(mov)) return Utils.showToast('Movimentação já cancelada.', 'warning');
+    abrirModalMovimentacao('cancelar', mov);
+}
 
-    var motivo = window.prompt('Informe o motivo do cancelamento:');
-    if (motivo === null) return;
+function setupMovimentacaoModal() {
+    var modal = document.getElementById('mov-modal');
+    var closeBtn = document.getElementById('mov-modal-close');
+    var cancelBtn = document.getElementById('mov-modal-cancel');
+    var form = document.getElementById('mov-modal-form');
+
+    if (!modal || !form) return;
+
+    function close() {
+        modal.classList.add('hidden');
+        modalMovimentacaoState = { mode: '', movId: '' };
+        form.reset();
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    modal.addEventListener('click', function(ev) { if (ev.target === modal) close(); });
+
+    form.addEventListener('submit', async function(ev) {
+        ev.preventDefault();
+
+        var movId = modalMovimentacaoState.movId;
+        var mode = modalMovimentacaoState.mode;
+        if (!movId || !mode) return;
+
+        try {
+            if (mode === 'editar') {
+                var tipo = String(document.getElementById('mov-modal-tipo').value || '').trim();
+                var descricao = String(document.getElementById('mov-modal-descricao').value || '').trim();
+                var prazo = String(document.getElementById('mov-modal-prazo').value || '').trim();
+
+                if (!tipo || !descricao) {
+                    Utils.showToast('Tipo e descrição são obrigatórios.', 'warning');
+                    return;
+                }
+
+                await API.movimentacoes.editar({
+                    id_movimentacao: movId,
+                    tipo: tipo,
+                    descricao: descricao,
+                    data_prazo: prazo
+                });
+                Utils.showToast('Movimentação atualizada.', 'success');
+            } else {
+                var motivo = String(document.getElementById('mov-modal-motivo').value || '').trim();
+                await API.movimentacoes.cancelar({
+                    id_movimentacao: movId,
+                    motivo: motivo
+                });
+                Utils.showToast('Movimentação cancelada.', 'success');
+            }
+
+            close();
+            loadProcessoDetalhe(currentProcessId);
+        } catch (e) {
+            console.error(e);
+            Utils.showToast(e.message || 'Erro ao salvar movimentação.', 'error');
+        }
+    });
+}
+
+function abrirModalMovimentacao(mode, mov) {
+    var modal = document.getElementById('mov-modal');
+    if (!modal) return;
+
+    modalMovimentacaoState = { mode: mode, movId: String(mov.id || '') };
+
+    var title = document.getElementById('mov-modal-title');
+    var submit = document.getElementById('mov-modal-submit');
+    var editFields = document.getElementById('mov-modal-edit-fields');
+    var cancelFields = document.getElementById('mov-modal-cancel-fields');
+
+    if (mode === 'editar') {
+        if (title) title.textContent = 'Editar Movimentação';
+        if (submit) {
+            submit.textContent = 'Salvar Alterações';
+            submit.className = 'px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg';
+        }
+        if (editFields) editFields.classList.remove('hidden');
+        if (cancelFields) cancelFields.classList.add('hidden');
+
+        document.getElementById('mov-modal-tipo').value = mov.tipo || '';
+        document.getElementById('mov-modal-descricao').value = mov.descricao || '';
+        document.getElementById('mov-modal-prazo').value = mov.data_prazo ? new Date(mov.data_prazo).toISOString().slice(0, 10) : '';
+    } else {
+        if (title) title.textContent = 'Cancelar Movimentação';
+        if (submit) {
+            submit.textContent = 'Confirmar Cancelamento';
+            submit.className = 'px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg';
+        }
+        if (editFields) editFields.classList.add('hidden');
+        if (cancelFields) cancelFields.classList.remove('hidden');
+        document.getElementById('mov-modal-motivo').value = '';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function setupEtiquetasModal() {
+    var modal = document.getElementById('etiquetas-modal');
+    var closeBtn = document.getElementById('etiquetas-modal-close');
+    var cancelBtn = document.getElementById('etiquetas-cancel-btn');
+    var addBtn = document.getElementById('etiquetas-add-btn');
+    var saveBtn = document.getElementById('etiquetas-save-btn');
+    var input = document.getElementById('etiquetas-nova-input');
+
+    if (!modal) return;
+
+    function close() { modal.classList.add('hidden'); }
+
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    modal.addEventListener('click', function(ev) { if (ev.target === modal) close(); });
+
+    if (addBtn) addBtn.addEventListener('click', function() {
+        var value = String(input.value || '').trim();
+        if (!value) return;
+        if (etiquetasBuffer.indexOf(value) === -1) etiquetasBuffer.push(value);
+        input.value = '';
+        renderEtiquetasModalList();
+    });
+
+    if (input) input.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') {
+            ev.preventDefault();
+            if (addBtn) addBtn.click();
+        }
+    });
+
+    if (saveBtn) saveBtn.addEventListener('click', salvarEtiquetasModal);
+}
+
+function abrirModalEtiquetas() {
+    if (!currentProcessData || !currentProcessData.processo) return;
+    var modal = document.getElementById('etiquetas-modal');
+    etiquetasBuffer = Array.isArray(currentProcessData.processo.etiquetas) ? currentProcessData.processo.etiquetas.slice() : [];
+    renderEtiquetasModalList();
+    var input = document.getElementById('etiquetas-nova-input');
+    if (input) input.value = '';
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderEtiquetasModalList() {
+    var list = document.getElementById('etiquetas-modal-list');
+    if (!list) return;
+
+    if (!etiquetasBuffer.length) {
+        list.innerHTML = '<p class="text-xs text-slate-400 italic">Nenhuma etiqueta cadastrada.</p>';
+        return;
+    }
+
+    list.innerHTML = etiquetasBuffer.map(function(tag, idx) {
+        return '<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">' +
+            Utils.escapeHtml(tag) +
+            '<button type="button" class="text-purple-500 hover:text-red-600" data-action="remover-etiqueta" data-tag-index="' + idx + '">' +
+            '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>' +
+            '</button></span>';
+    }).join('');
+}
+
+async function salvarEtiquetasModal() {
+    if (!currentProcessData || !currentProcessData.processo) return;
 
     try {
-        await API.movimentacoes.cancelar({
-            id_movimentacao: movId,
-            motivo: String(motivo || '').trim()
+        var result = await API.processosAdmin.salvarEtiquetas({
+            id_processo: currentProcessData.processo.id,
+            etiquetas: etiquetasBuffer.join(', ')
         });
-        Utils.showToast('Movimentação cancelada.', 'success');
-        loadProcessoDetalhe(currentProcessId);
-    } catch (e) {
-        console.error(e);
-        Utils.showToast(e.message || 'Erro ao cancelar movimentação.', 'error');
+
+        if (result && result.processo) {
+            currentProcessData.processo = result.processo;
+            renderEtiquetasProcesso(result.processo.etiquetas);
+            updateStatusUI(currentProcessData.processo.status);
+        }
+
+        var modal = document.getElementById('etiquetas-modal');
+        if (modal) modal.classList.add('hidden');
+        Utils.showToast('Etiquetas atualizadas.', 'success');
+    } catch (err) {
+        console.error(err);
+        Utils.showToast(err.message || 'Erro ao atualizar etiquetas.', 'error');
     }
 }
 
@@ -1630,43 +1795,22 @@ document.addEventListener('click', function(ev) {
 
     var action = btn.getAttribute('data-action');
     var movId = btn.getAttribute('data-mov-id');
-    if (!movId) return;
 
-    if (action === 'editar-mov') {
+    if (action === 'editar-mov' && movId) {
         ev.preventDefault();
         editarMovimentacao(movId);
-    } else if (action === 'cancelar-mov') {
+    } else if (action === 'cancelar-mov' && movId) {
         ev.preventDefault();
         cancelarMovimentacao(movId);
+    } else if (action === 'remover-etiqueta') {
+        ev.preventDefault();
+        var idx = Number(btn.getAttribute('data-tag-index'));
+        if (Number.isFinite(idx) && idx >= 0) {
+            etiquetasBuffer.splice(idx, 1);
+            renderEtiquetasModalList();
+        }
     }
 });
-
-
-
-async function editarEtiquetasProcesso() {
-    if (!currentProcessData || !currentProcessData.processo) return;
-
-    var processo = currentProcessData.processo;
-    var atual = Array.isArray(processo.etiquetas) ? processo.etiquetas.join(', ') : String(processo.etiquetas || '');
-    var valor = window.prompt('Informe as etiquetas separadas por vírgula:', atual);
-    if (valor === null) return;
-
-    try {
-        var result = await API.processosAdmin.salvarEtiquetas({
-            id_processo: processo.id,
-            etiquetas: valor
-        });
-
-        if (result && result.processo) {
-            currentProcessData.processo = result.processo;
-            updateStatusUI(currentProcessData.processo.status);
-        }
-        Utils.showToast('Etiquetas atualizadas.', 'success');
-    } catch (err) {
-        console.error(err);
-        Utils.showToast(err.message || 'Erro ao atualizar etiquetas.', 'error');
-    }
-}
 
 // =============================================================================
 // AUTO-REFRESH - Polling silencioso para sincronização multi-usuário
@@ -1704,6 +1848,7 @@ function startAutoRefresh() {
                     populateReferenciaDropdown(movs, refMap);
                     renderDocumentos(movs, p.link_pasta);
                     loadNotasFromAPI(p);
+                    renderEtiquetasProcesso(p.etiquetas);
 
                     var countBadge = document.getElementById('mov-count-badge');
                     if (countBadge) countBadge.textContent = movs.length;
