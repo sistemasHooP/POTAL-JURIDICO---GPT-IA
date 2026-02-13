@@ -58,16 +58,16 @@ const Utils = {
     // --- UI (User Interface) ---
 
     /**
-     * Exibe a tela de carregamento.
-     * @param {string} message - Texto a exibir.
+     * Exibe a tela de carregamento contextual.
+     * @param {string} message - Mensagem principal (ex.: "Abrindo Pasta Virtual...").
      * @param {string} type - 'spinner' (padrão) ou 'database' (ícone de banco).
+     * @param {string} detail - Contexto complementar (ex.: "Autos de João da Silva").
      */
-    showLoading: function(message = "Carregando...", type = 'spinner') {
+    showLoading: function(message = "Carregando...", type = 'spinner', detail = '') {
         let loader = document.getElementById('global-loader');
-        
-        // Ícones SVG
+
         const iconSpinner = `<div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-600 mb-4"></div>`;
-        
+
         const iconDatabase = `
             <div class="mb-4 relative">
                 <svg class="w-16 h-16 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,27 +80,49 @@ const Utils = {
         `;
 
         const selectedIcon = (type === 'database') ? iconDatabase : iconSpinner;
+        const subtitle = detail ? String(detail) : 'Sincronizando dados com segurança...';
 
         if (!loader) {
             loader = document.createElement('div');
             loader.id = 'global-loader';
             loader.className = 'fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm transition-opacity duration-300';
-            
-            loader.innerHTML = `
-                <div class="flex flex-col items-center p-8">
-                    <div id="loader-icon">${selectedIcon}</div>
-                    <p id="loader-message" class="text-white font-medium text-lg tracking-wide text-center">${message}</p>
-                    <p class="text-slate-400 text-xs mt-2 animate-pulse">Por favor, aguarde...</p>
-                </div>
-            `;
+
+            const content = document.createElement('div');
+            content.className = 'flex flex-col items-center p-8 max-w-lg';
+
+            const iconEl = document.createElement('div');
+            iconEl.id = 'loader-icon';
+            iconEl.innerHTML = selectedIcon;
+
+            const msgEl = document.createElement('p');
+            msgEl.id = 'loader-message';
+            msgEl.className = 'text-white font-semibold text-lg tracking-wide text-center';
+            msgEl.textContent = String(message);
+
+            const detailEl = document.createElement('p');
+            detailEl.id = 'loader-detail';
+            detailEl.className = 'text-slate-300 text-sm mt-1 text-center';
+            detailEl.textContent = subtitle;
+
+            const hintEl = document.createElement('p');
+            hintEl.className = 'text-slate-400 text-xs mt-2 animate-pulse';
+            hintEl.textContent = 'Aguarde um instante...';
+
+            content.appendChild(iconEl);
+            content.appendChild(msgEl);
+            content.appendChild(detailEl);
+            content.appendChild(hintEl);
+            loader.appendChild(content);
             document.body.appendChild(loader);
         } else {
             const msgEl = document.getElementById('loader-message');
+            const detailEl = document.getElementById('loader-detail');
             const iconEl = document.getElementById('loader-icon');
-            if(msgEl) msgEl.textContent = message;
-            if(iconEl) iconEl.innerHTML = selectedIcon;
+            if (msgEl) msgEl.textContent = String(message);
+            if (detailEl) detailEl.textContent = subtitle;
+            if (iconEl) iconEl.innerHTML = selectedIcon;
         }
-        
+
         loader.classList.remove('hidden');
         loader.classList.add('flex');
     },
@@ -113,7 +135,48 @@ const Utils = {
         }
     },
 
-    showToast: function(message, type = 'info') {
+    showSyncStatus: function(message = 'Sincronizando dados...') {
+        let status = document.getElementById('global-sync-status');
+        if (!status) {
+            status = document.createElement('div');
+            status.id = 'global-sync-status';
+            status.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-[105] hidden items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 text-white text-xs font-medium shadow-lg border border-white/15 backdrop-blur transition-opacity duration-200';
+            status.innerHTML = `
+                <span class="inline-block h-3 w-3 rounded-full border-2 border-white/35 border-t-white animate-spin"></span>
+                <span id="global-sync-status-message"></span>
+            `;
+            document.body.appendChild(status);
+        }
+
+        status.dataset.visibleAt = String(Date.now());
+        const msgEl = document.getElementById('global-sync-status-message');
+        if (msgEl) msgEl.textContent = message;
+        status.classList.remove('hidden');
+        status.classList.add('flex');
+        status.classList.remove('opacity-0');
+    },
+
+    hideSyncStatus: function() {
+        const status = document.getElementById('global-sync-status');
+        if (!status) return;
+
+        const visibleAt = Number(status.dataset.visibleAt || Date.now());
+        const elapsed = Date.now() - visibleAt;
+        const minVisibleMs = 500;
+        const hide = function() {
+            status.classList.add('hidden');
+            status.classList.remove('flex');
+            status.classList.add('opacity-0');
+        };
+
+        if (elapsed >= minVisibleMs) {
+            hide();
+        } else {
+            setTimeout(hide, minVisibleMs - elapsed);
+        }
+    },
+
+    showToast: function(message, type = 'info', title = '') {
         let container = document.getElementById('toast-container');
         if (!container) {
             container = document.createElement('div');
@@ -122,16 +185,54 @@ const Utils = {
             document.body.appendChild(container);
         }
 
-        const colors = {
-            success: 'bg-green-600 text-white shadow-lg',
-            error: 'bg-red-600 text-white shadow-lg',
-            warning: 'bg-amber-500 text-white shadow-lg',
-            info: 'bg-slate-800 text-white shadow-lg'
+        const variant = {
+            success: {
+                box: 'bg-emerald-600 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7"></path></svg>',
+                title: 'Sucesso'
+            },
+            error: {
+                box: 'bg-red-600 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+                title: 'Erro'
+            },
+            warning: {
+                box: 'bg-amber-500 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 9v2m0 4h.01M10.29 3.86l-7.5 13A2 2 0 004.5 20h15a2 2 0 001.71-3.14l-7.5-13a2 2 0 00-3.42 0z"></path></svg>',
+                title: 'Atenção'
+            },
+            info: {
+                box: 'bg-slate-800 text-white shadow-lg',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 16h-1v-4h-1m1-4h.01M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>',
+                title: 'Informação'
+            }
         };
 
+        const v = variant[type] || variant.info;
+        const toastTitle = title || v.title;
+
         const toast = document.createElement('div');
-        toast.className = `pointer-events-auto flex items-center w-full p-4 rounded-lg shadow-xl transform transition-all duration-300 translate-x-full ${colors[type] || colors.info}`;
-        toast.innerHTML = `<span class="font-medium">${message}</span>`;
+        toast.className = `pointer-events-auto flex items-start gap-3 w-full p-4 rounded-lg shadow-xl transform transition-all duration-300 translate-x-full ${v.box}`;
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'shrink-0 mt-0.5';
+        iconWrap.innerHTML = v.icon;
+
+        const content = document.createElement('div');
+        content.className = 'min-w-0';
+
+        const titleEl = document.createElement('p');
+        titleEl.className = 'text-xs font-semibold uppercase tracking-wide opacity-90';
+        titleEl.textContent = String(toastTitle);
+
+        const messageEl = document.createElement('p');
+        messageEl.className = 'font-medium leading-snug';
+        messageEl.textContent = String(message);
+
+        content.appendChild(titleEl);
+        content.appendChild(messageEl);
+        toast.appendChild(iconWrap);
+        toast.appendChild(content);
 
         container.appendChild(toast);
         requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
@@ -207,6 +308,59 @@ const Utils = {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    },
+
+
+    /**
+     * Mantém apenas dígitos do documento.
+     */
+    onlyDigits: function(value) {
+        return String(value || '').replace(/\D/g, '');
+    },
+
+    /**
+     * Detecta se o documento é CPF, CNPJ ou inválido.
+     */
+    getDocumentType: function(value) {
+        const d = this.onlyDigits(value);
+        if (d.length <= 11 && d.length > 0) return 'CPF';
+        if (d.length > 11 && d.length <= 14) return 'CNPJ';
+        return 'INVALIDO';
+    },
+
+    /**
+     * Formata documento automaticamente (CPF/CNPJ).
+     */
+    formatDocument: function(value) {
+        const d = this.onlyDigits(value);
+        if (d.length === 11) {
+            return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        if (d.length === 14) {
+            return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        return String(value || '');
+    },
+
+    /**
+     * Aplica máscara dinâmica em campo de documento (CPF/CNPJ).
+     */
+    maskDocumentInput: function(rawValue) {
+        let v = this.onlyDigits(rawValue);
+        if (v.length > 14) v = v.substring(0, 14);
+
+        if (v.length <= 11) {
+            if (v.length > 9) return v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+            if (v.length > 6) return v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+            if (v.length > 3) return v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            return v;
+        }
+
+        if (v.length > 12) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+        if (v.length > 8) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+        if (v.length > 5) return v.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        if (v.length > 2) return v.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+        return v;
     },
 
     /**
