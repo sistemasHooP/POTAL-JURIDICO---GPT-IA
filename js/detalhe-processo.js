@@ -1660,8 +1660,8 @@ function setupMovimentacaoModal() {
 
     if (!modal || !form) return;
 
-    function close() {
-        if (modalActionInProgress) return;
+    function close(force) {
+        if (modalActionInProgress && !force) return;
         modal.classList.add('hidden');
         modalMovimentacaoState = { mode: '', movId: '' };
         form.reset();
@@ -1712,7 +1712,7 @@ function setupMovimentacaoModal() {
                 Utils.showToast('Movimentação cancelada.', 'success');
             }
 
-            close();
+            close(true);
             loadProcessoDetalhe(currentProcessId);
         } catch (e) {
             console.error(e);
