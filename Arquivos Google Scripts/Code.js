@@ -41,6 +41,14 @@ function doPost(e) {
     var actionName = payload.action || 'SEM_ACTION';
     payload.action = actionName;
 
+    // Modo manutenção: bloqueia login com mensagem configurável.
+    var props = PropertiesService.getScriptProperties();
+    var maintenanceEnabled = props.getProperty('PRESIDENTE_MAINTENANCE_MODE') === 'true';
+    if (maintenanceEnabled && actionName === 'login') {
+      var maintenanceMsg = props.getProperty('PRESIDENTE_MAINTENANCE_MESSAGE') || CONFIG.PRESIDENTE_PANEL.MAINTENANCE_MESSAGE;
+      return _createResponse('error', maintenanceMsg);
+    }
+
     Logger.log('[Code] =============================================');
     Logger.log('[Code] Requisição recebida: ' + actionName);
     Logger.log('[Code] Origem: ' + (payload.origem || 'desconhecida'));
@@ -110,13 +118,21 @@ function _isCriticalAction(action) {
     'atualizarCliente': true,
     'criarProcesso': true,
     'novaMovimentacao': true,
+    'editarMovimentacao': true,
+    'cancelarMovimentacao': true,
     'salvarNotasProcesso': true,
+    'salvarEtiquetasProcesso': true,
     'cadastrarAdvogado': true,
     'atualizarAdvogado': true,
     'atribuirProcesso': true,
     'uploadArquivo': true,
     'downloadArquivo': true,
-    'downloadArquivoCliente': true
+    'downloadArquivoCliente': true,
+    'presidenteLimparLogs': true,
+    'presidenteAtualizarStatusUsuario': true,
+    'presidenteResetSenhaUsuario': true,
+    'presidenteGerarBackupAgora': true,
+    'presidenteAtualizarManutencao': true
   };
   return !!criticalActions[String(action || '')];
 }
@@ -220,9 +236,18 @@ function _routeAction(payload) {
     case 'salvarNotasProcesso':
       return ProcessosService.salvarNotas(payload);
 
+    case 'salvarEtiquetasProcesso':
+      return ProcessosService.salvarEtiquetas(payload);
+
     // Movimentações
     case 'novaMovimentacao':
       return MovimentacoesService.novaMovimentacao(payload);
+
+    case 'editarMovimentacao':
+      return MovimentacoesService.editarMovimentacao(payload);
+
+    case 'cancelarMovimentacao':
+      return MovimentacoesService.cancelarMovimentacao(payload);
 
     // Advogados (Gerenciamento)
     case 'listarAdvogados':
@@ -249,6 +274,38 @@ function _routeAction(payload) {
 
     case 'downloadArquivo':
       return DriveService.getArquivoBase64(payload);
+
+    // Painel do Presidente
+    case 'presidenteGetResumo':
+      return PresidenteService.getResumo(payload);
+
+    case 'presidenteListarLogs':
+      return PresidenteService.listarLogs(payload);
+
+    case 'presidenteExportarLogsCsv':
+      return PresidenteService.exportarLogsCsv(payload);
+
+    case 'presidenteLimparLogs':
+      return PresidenteService.limparLogs(payload);
+
+    case 'presidenteGetHealth':
+      return PresidenteService.getHealth(payload);
+
+    case 'presidenteGetUsuariosGestores':
+      return PresidenteService.getUsuariosGestores(payload);
+
+    case 'presidenteAtualizarStatusUsuario':
+      return PresidenteService.atualizarStatusUsuario(payload);
+
+    case 'presidenteResetSenhaUsuario':
+      return PresidenteService.resetSenhaUsuario(payload);
+
+    case 'presidenteListarBackups':
+      return PresidenteService.listarBackups(payload);
+
+    case 'presidenteGerarBackupAgora':
+      return PresidenteService.gerarBackupAgora(payload);
+
 
     default:
       throw new Error('Ação "' + action + '" não existe. Verifique a documentação.');

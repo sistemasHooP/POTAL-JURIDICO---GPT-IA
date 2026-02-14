@@ -18,6 +18,23 @@
     let processosCache = [];
     let carregandoEmBackground = false;
     let clienteDetalheAtual = null;
+    let clienteModalBusy = false;
+
+    function setClienteButtonLoading(btn, isLoading, text) {
+        if (!btn) return;
+
+        if (isLoading) {
+            if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = '<span class="inline-flex items-center gap-2"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' + (text || 'Salvando...') + '</span>';
+            return;
+        }
+
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+    }
 
     // =========================================================================
     // INICIALIZACAO
@@ -587,7 +604,8 @@
         }, 200);
     }
 
-    function fecharModal() {
+    function fecharModal(force) {
+        if (clienteModalBusy && !force) return;
         var modal = document.getElementById('modal-cliente');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
@@ -638,8 +656,8 @@
         }
 
         var btn = document.getElementById('btn-salvar-cliente');
-        btn.classList.add('btn-loading');
-        btn.disabled = true;
+        clienteModalBusy = true;
+        setClienteButtonLoading(btn, true, editId ? 'Salvando alterações...' : 'Cadastrando...');
 
         try {
             if (editId) {
@@ -669,7 +687,9 @@
 
             // Limpar cache e recarregar
             Utils.Cache.clear('listarClientes');
-            fecharModal();
+            clienteModalBusy = false;
+            setClienteButtonLoading(btn, false);
+            fecharModal(true);
             carregarClientes({ forceRefresh: true });
 
             // Sincronizar com outras abas
@@ -688,8 +708,8 @@
             console.error('Erro ao salvar cliente:', error);
             Utils.showToast(error.message || 'Erro ao salvar cliente.', 'error');
         } finally {
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
+            clienteModalBusy = false;
+            setClienteButtonLoading(btn, false);
         }
     }
 

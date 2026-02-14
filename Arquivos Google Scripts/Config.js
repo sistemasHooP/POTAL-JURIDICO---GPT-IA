@@ -60,6 +60,17 @@ var CONFIG = {
   // CONFIGURAÇÕES DE RATE LIMIT
   // ═══════════════════════════════════════════════════════════════════════════
   
+
+  // Configurações do Painel do Presidente
+  PRESIDENTE_PANEL: {
+    LOG_RETENTION_DAYS: 90,
+    BACKUP_INTERVAL_DAYS: 7,
+    BACKUP_KEEP_LAST: 3,
+    BACKUP_PREFIX: 'BACKUP_RPPS_',
+    MAINTENANCE_MODE: false,
+    MAINTENANCE_MESSAGE: 'Sistema em manutenção. Tente novamente em instantes.'
+  },
+
   RATE_LIMIT: {
     // Login: máximo de tentativas em uma janela de tempo
     LOGIN: {

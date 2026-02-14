@@ -104,6 +104,12 @@ const Auth = {
         return perfil === 'ADMIN' || perfil === 'PRESIDENTE';
     },
 
+    isPresident: function() {
+        const user = this.getUser();
+        if (!user) return false;
+        return String(user.perfil || '').toUpperCase() === 'PRESIDENTE';
+    },
+
     /**
      * Atualiza a interface com o nome do usuário logado.
      * Procura por elementos com ID 'user-name-display' e 'user-profile-display'.
@@ -162,6 +168,17 @@ const Auth = {
             const isAdmin = perfil === 'ADMIN' || perfil === 'PRESIDENTE';
             document.querySelectorAll('[data-admin-only]').forEach(function(el) {
                 if (isAdmin) {
+                    el.classList.remove('hidden');
+                    el.classList.add('flex');
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            });
+
+            const isPresident = perfil === 'PRESIDENTE';
+            document.querySelectorAll('[data-president-only]').forEach(function(el) {
+                if (isPresident) {
                     el.classList.remove('hidden');
                     el.classList.add('flex');
                 } else {

@@ -137,6 +137,14 @@ function updateCounter(elementId, value, instant = false) {
     }, 40);
 }
 
+function renderEtiquetasDashboard(etiquetas) {
+    var lista = Array.isArray(etiquetas) ? etiquetas : String(etiquetas || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+    if (!lista.length) return '';
+    return '<div class="mt-1 flex flex-wrap gap-1">' + lista.slice(0, 3).map(function(tag){
+        return '<span class="px-1.5 py-0.5 rounded text-[10px] bg-purple-50 border border-purple-200 text-purple-700 font-semibold">' + Utils.escapeHtml(tag) + '</span>';
+    }).join('') + '</div>';
+}
+
 /**
  * Renderiza as linhas da tabela de processos recentes.
  */
@@ -156,6 +164,8 @@ function renderRecentTable(processos) {
         const badgeClass = Utils.getStatusClass(p.status);
         // Formata data para DD/MM/AAAA
         const dataEntrada = p.data_entrada ? Utils.formatDate(p.data_entrada).split(' ')[0] : '-';
+        const responsavel = p.responsavel_nome || '-';
+        const etiquetasHtml = renderEtiquetasDashboard(p.etiquetas);
 
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0";
@@ -169,11 +179,15 @@ function renderRecentTable(processos) {
                 <div class="flex flex-col">
                     <span class="font-bold text-slate-700">${p.numero_processo || 'S/N'}</span>
                     <span class="text-xs text-slate-400 md:hidden">${p.parte_nome}</span>
+                    <span class="text-[11px] text-slate-400 md:hidden">Resp: ${Utils.escapeHtml(responsavel)}</span>
+                    <div class="md:hidden">${etiquetasHtml}</div>
                 </div>
             </td>
             <td class="px-6 py-4 hidden sm:table-cell">
                 <div class="text-sm text-slate-900 font-medium">${p.parte_nome}</div>
                 <div class="text-xs text-slate-400">${p.tipo}</div>
+                <div class="text-[11px] text-slate-400">Responsável: ${Utils.escapeHtml(responsavel)}</div>
+                ${etiquetasHtml}
             </td>
             <td class="px-6 py-4">
                 <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${badgeClass}">
@@ -217,6 +231,8 @@ function loadNotificacoesPrazos() {
                 parte: proc.parte_nome || '-',
                 tipo: proc.tipo || '-',
                 status: proc.status || '-',
+                responsavel: proc.responsavel_nome || '-',
+                etiquetas: proc.etiquetas || [],
                 data_prazo: proc.data_prazo,
                 diffDias: diffDias,
                 urgencia: urgencia
@@ -285,6 +301,8 @@ function renderNotificacoes(prazos) {
                     '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ' + corText + ' ' + corBg + ' border ' + corBorda.replace('border-l-', 'border-') + '">' + label + '</span>' +
                 '</div>' +
                 '<p class="text-xs text-slate-500 truncate">' + Utils.escapeHtml(p.parte) + ' &middot; ' + Utils.escapeHtml(p.tipo) + '</p>' +
+                '<p class="text-[11px] text-slate-400 truncate">Responsável: ' + Utils.escapeHtml(p.responsavel || '-') + '</p>' +
+                renderEtiquetasDashboard(p.etiquetas) +
             '</div>' +
             '<div class="text-right shrink-0">' +
                 '<p class="text-xs font-mono font-bold ' + corText + '">' + dataFormatada + '</p>' +
