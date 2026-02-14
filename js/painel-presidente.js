@@ -81,6 +81,23 @@
     tbody.innerHTML = html;
   }
 
+  function renderMaintenanceAlert(maintenance) {
+    var el = document.getElementById('maintenance-alert');
+    if (!el) return;
+
+    var ativo = !!(maintenance && maintenance.enabled);
+    var msg = (maintenance && maintenance.message) ? String(maintenance.message) : 'Sistema em manutenção.';
+
+    if (ativo) {
+      el.className = 'border rounded-xl px-4 py-3 bg-amber-50 border-amber-200 text-amber-800';
+      el.innerHTML = '<div class="flex items-start gap-3"><svg class="w-5 h-5 mt-0.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-.01-12a9 9 0 100 18 9 9 0 000-18z"></path></svg><div><p class="text-sm font-bold">MODO MANUTENÇÃO ATIVO</p><p class="text-xs mt-1">' + Utils.escapeHtml(msg) + '</p><p class="text-[11px] mt-1 text-amber-700/80">Atenção: apenas PRESIDENTE consegue entrar enquanto a manutenção estiver ativa.</p></div></div>';
+      return;
+    }
+
+    el.className = 'border rounded-xl px-4 py-3 bg-emerald-50 border-emerald-200 text-emerald-800';
+    el.innerHTML = '<div class="flex items-start gap-3"><svg class="w-5 h-5 mt-0.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><div><p class="text-sm font-bold">Sistema operando normalmente</p><p class="text-xs mt-1">Modo manutenção desativado.</p></div></div>';
+  }
+
   function carregarResumo() {
     return API.presidente.getResumo().then(function(data) {
       var c = (data && data.counts) || {};
@@ -88,6 +105,7 @@
       document.getElementById('resumo-usuarios').textContent = c.usuarios || 0;
       document.getElementById('resumo-clientes').textContent = c.clientes || 0;
       document.getElementById('resumo-logs').textContent = c.logs || 0;
+      renderMaintenanceAlert((data && data.maintenance) || null);
     });
   }
 
