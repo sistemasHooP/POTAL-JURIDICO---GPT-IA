@@ -32,7 +32,8 @@ const CONFIG = {
         PROCESSOS: "processos.html",
         NOVO_PROCESSO: "novo-processo.html",
         CLIENTES: "clientes.html",
-        DETALHE_PROCESSO: "detalhe-processo.html"
+        DETALHE_PROCESSO: "detalhe-processo.html",
+        PAINEL_PRESIDENTE: "painel-presidente.html"
     }
 };
 

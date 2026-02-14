@@ -33,6 +33,7 @@ const PRECACHE_URLS = [
   './processos.html',
   './novo-processo.html',
   './detalhe-processo.html',
+  './painel-presidente.html',
 
   // PWA
   './manifest.json',
@@ -52,6 +53,7 @@ const PRECACHE_URLS = [
   './js/processos.js',
   './js/novo-processo.js',
   './js/detalhe-processo.js',
+  './js/painel-presidente.js',
   './js/pwa.js',
 
   // Área do cliente
