@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Presidente - Sistema Jurídico RPPS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="page-shell bg-slate-50 min-h-screen pb-20 md:pb-0">
+
+<nav class="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
+    <span class="font-bold text-lg">RPPS Jurídico</span>
+    <button id="mobile-logout-btn" class="text-slate-300 hover:text-white">Sair</button>
+</nav>
+
+<div class="flex h-screen overflow-hidden">
+    <aside class="hidden md:flex flex-col w-72 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white h-full shrink-0 shadow-2xl z-20">
+        <div class="px-6 py-5 border-b border-white/5">
+            <h1 class="text-xl font-black tracking-tight">RPPS Jurídico</h1>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-[0.2em]">Painel do Presidente</p>
+        </div>
+        <div class="px-5 py-4 border-b border-white/5">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-sm text-white shadow-lg shadow-blue-900/30">
+                    <span id="user-initials">U</span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate" id="user-name-display">Carregando...</p>
+                    <p class="text-[10px] text-blue-400 uppercase tracking-wider font-medium" id="user-profile-display">...</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <a href="dashboard.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">Dashboard</a>
+            <a href="processos.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">Processos</a>
+            <a href="clientes.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">Clientes</a>
+            <a href="advogados.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">Advogados</a>
+            <a href="painel-presidente.html" class="flex items-center gap-3 px-3.5 py-2.5 bg-blue-600/20 text-blue-300 rounded-xl transition-all text-sm font-medium border border-blue-500/20">Painel do Presidente</a>
+        </nav>
+        <div class="p-4 border-t border-white/5">
+            <button id="desktop-logout-btn" class="flex items-center justify-center gap-3 w-full px-3.5 py-2.5 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all text-sm">Encerrar Sessão</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div class="max-w-7xl mx-auto space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Painel do Presidente</h2>
+                    <p class="text-slate-500 text-sm">Governança, auditoria e manutenção do sistema.</p>
+                </div>
+                <button id="btn-refresh-painel" class="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm hover:bg-slate-700">Atualizar dados</button>
+            </div>
+
+            <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="bg-white border border-slate-100 rounded-xl p-4"><p class="text-xs text-slate-500">Processos</p><p id="resumo-processos" class="text-2xl font-bold text-slate-800">0</p></div>
+                <div class="bg-white border border-slate-100 rounded-xl p-4"><p class="text-xs text-slate-500">Usuários</p><p id="resumo-usuarios" class="text-2xl font-bold text-slate-800">0</p></div>
+                <div class="bg-white border border-slate-100 rounded-xl p-4"><p class="text-xs text-slate-500">Clientes</p><p id="resumo-clientes" class="text-2xl font-bold text-slate-800">0</p></div>
+                <div class="bg-white border border-slate-100 rounded-xl p-4"><p class="text-xs text-slate-500">Logs</p><p id="resumo-logs" class="text-2xl font-bold text-slate-800">0</p></div>
+            </section>
+
+            <section class="bg-white border border-slate-100 rounded-xl p-4 space-y-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800">Saúde do Sistema</h3>
+                    <button id="btn-health" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs hover:bg-slate-200">Atualizar saúde</button>
+                </div>
+                <div id="saude-sistema" class="text-sm text-slate-500">Carregando status...</div>
+            </section>
+
+            <section class="bg-white border border-slate-100 rounded-xl p-4 space-y-3">
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-limpar-logs" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">Limpar logs agora</button>
+                    <button id="btn-backup" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700">Gerar backup agora</button>
+                    <button id="btn-manutencao" class="px-3 py-2 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-700">Modo manutenção</button>
+                    <button id="btn-recarregar-usuarios" class="px-3 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-800">Atualizar lista de gestores</button>
+                </div>
+                <p id="painel-status" class="text-sm text-slate-500"></p>
+            </section>
+
+            <section class="bg-white border border-slate-100 rounded-xl p-4 space-y-3">
+                <h3 class="font-semibold text-slate-800">Logs (filtros)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <input id="filtro-texto" class="border rounded-lg px-3 py-2 text-sm" placeholder="Texto (usuário/ação/detalhe)">
+                    <select id="filtro-status" class="border rounded-lg px-3 py-2 text-sm"><option value="">Status</option><option>OK</option><option>ERRO</option></select>
+                    <select id="filtro-atalho" class="border rounded-lg px-3 py-2 text-sm"><option value="">Atalho</option><option value="ERROS_7_DIAS">Erros últimos 7 dias</option><option value="FALHAS_LOGIN">Falhas login/rate limit</option><option value="ACOES_ADMIN">Ações administrativas</option></select>
+                    <div class="flex gap-2">
+                        <button id="btn-filtrar-logs" class="flex-1 px-3 py-2 rounded-lg bg-slate-800 text-white text-sm">Filtrar</button>
+                        <button id="btn-exportar-csv" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm">Exportar CSV</button>
+                    </div>
+                </div>
+                <div class="overflow-auto border rounded-lg max-h-96 overflow-y-auto">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-50"><tr><th class="p-2 text-left">Data</th><th class="p-2 text-left">Usuário</th><th class="p-2 text-left">Ação</th><th class="p-2 text-left">Status</th><th class="p-2 text-left">Detalhes</th></tr></thead>
+                        <tbody id="logs-lista"><tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="bg-white border border-slate-100 rounded-xl p-4 space-y-3">
+                <h3 class="font-semibold text-slate-800">Usuários Gestores (mínimo)</h3>
+                <div class="overflow-auto border rounded-lg">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-50"><tr><th class="p-2 text-left">Nome</th><th class="p-2 text-left">Perfil</th><th class="p-2 text-left">Ativo</th><th class="p-2 text-left">Último login</th><th class="p-2 text-left">Ações</th></tr></thead>
+                        <tbody id="gestores-lista"><tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/painel-presidente.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

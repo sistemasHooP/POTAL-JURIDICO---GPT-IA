@@ -86,7 +86,7 @@ const API = {
     // =========================================================================
     invalidateRelatedCache: function(action) {
         // Após qualquer escrita, limpa caches relacionados para forçar dados frescos
-        if (action === 'novaMovimentacao' || action === 'criarProcesso') {
+        if (action === 'novaMovimentacao' || action === 'criarProcesso' || action === 'editarMovimentacao' || action === 'cancelarMovimentacao' || action === 'salvarEtiquetasProcesso') {
             Utils.Cache.clear('listarProcessos');
             Utils.Cache.clear('getProcessoDetalhe');
             Utils.Cache.clear('getDashboard');
@@ -319,6 +319,21 @@ const API = {
         nova: (dadosMov) => API.call('novaMovimentacao', dadosMov).then(function(result) {
             API.invalidateRelatedCache('novaMovimentacao');
             return result;
+        }),
+        editar: (dadosMov) => API.call('editarMovimentacao', dadosMov).then(function(result) {
+            API.invalidateRelatedCache('editarMovimentacao');
+            return result;
+        }),
+        cancelar: (dadosMov) => API.call('cancelarMovimentacao', dadosMov).then(function(result) {
+            API.invalidateRelatedCache('cancelarMovimentacao');
+            return result;
+        })
+    },
+
+    processosAdmin: {
+        salvarEtiquetas: (dados) => API.call('salvarEtiquetasProcesso', dados, 'POST', true).then(function(result) {
+            API.invalidateRelatedCache('salvarEtiquetasProcesso');
+            return result;
         })
     },
 
@@ -339,6 +354,37 @@ const API = {
         listarProcessos: (advogadoId) => API.call('listarProcessosAdvogado', { advogado_id: advogadoId }, 'POST', true),
         listarProcessosAtribuicao: () => API.call('listarProcessosAtribuicao', {}, 'POST', true)
     },
+
+
+    presidente: {
+        getResumo: () => API.call('presidenteGetResumo', {}, 'POST', true),
+        listarLogs: (filtros) => API.call('presidenteListarLogs', filtros || {}, 'POST', true),
+        exportarLogsCsv: (filtros) => API.call('presidenteExportarLogsCsv', filtros || {}, 'POST', true),
+        limparLogs: (dados) => API.call('presidenteLimparLogs', dados || {}, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteLimparLogs');
+            return result;
+        }),
+        getHealth: () => API.call('presidenteGetHealth', {}, 'POST', true),
+        listarUsuariosGestores: () => API.call('presidenteGetUsuariosGestores', {}, 'POST', true),
+        atualizarStatusUsuario: (dados) => API.call('presidenteAtualizarStatusUsuario', dados, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteAtualizarStatusUsuario');
+            return result;
+        }),
+        resetSenhaUsuario: (dados) => API.call('presidenteResetSenhaUsuario', dados, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteResetSenhaUsuario');
+            return result;
+        }),
+        listarBackups: () => API.call('presidenteListarBackups', {}, 'POST', true),
+        gerarBackupAgora: (dados) => API.call('presidenteGerarBackupAgora', dados || {}, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteGerarBackupAgora');
+            return result;
+        }),
+        atualizarManutencao: (dados) => API.call('presidenteAtualizarManutencao', dados || {}, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteAtualizarManutencao');
+            return result;
+        })
+    },
+
 
     drive: {
         upload: (dadosArquivo) => API.call('uploadArquivo', dadosArquivo),
