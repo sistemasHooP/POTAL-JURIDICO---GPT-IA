@@ -161,6 +161,14 @@ var AuthService = {
     return perfil.toUpperCase() === ENUMS.PERFIL.CLIENTE;
   },
 
+  /**
+   * Verifica se o perfil é PRESIDENTE.
+   */
+  isPresidente: function(perfil) {
+    if (!perfil) return false;
+    return String(perfil).toUpperCase() === ENUMS.PERFIL.PRESIDENTE;
+  },
+
   // ═══════════════════════════════════════════════════════════════════════════
   // MÉTODOS INTERNOS (usados também pelo ClienteService)
   // ═══════════════════════════════════════════════════════════════════════════
