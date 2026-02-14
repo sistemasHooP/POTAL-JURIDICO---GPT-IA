@@ -98,13 +98,34 @@
     });
   }
 
+  function renderSaude(data) {
+    var el = document.getElementById('saude-sistema');
+    if (!el) return;
+    if (!data || !data.checks) {
+      el.innerHTML = "<span class=\"text-red-600\">Falha ao carregar status.</span>";
+      return;
+    }
+    var c = data.checks;
+    var healthy = !!data.healthy;
+    var badge = healthy
+      ? '<span class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold mr-2">SAUDÁVEL</span>'
+      : '<span class="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-semibold mr-2">ATENÇÃO</span>';
+    el.innerHTML = badge +
+      'Banco: <strong>' + (c.database ? 'OK' : 'FALHA') + '</strong> · Drive: <strong>' + (c.drive ? 'OK' : 'FALHA') + '</strong> · E-mail: <strong>' + (c.email ? 'OK' : 'FALHA') + '</strong>' +
+      '<div class="text-xs text-slate-400 mt-1">Atualizado em: ' + Utils.escapeHtml(formatDate(data.timestamp)) + '</div>';
+  }
+
+  function carregarSaude() {
+    return API.presidente.getHealth().then(renderSaude);
+  }
+
   function carregarGestores() {
     return API.presidente.listarUsuariosGestores().then(renderGestores);
   }
 
   function carregarTudo() {
     setStatus('Atualizando painel...');
-    return Promise.all([carregarResumo(), carregarLogs(), carregarGestores()])
+    return Promise.all([carregarResumo(), carregarLogs(), carregarGestores(), carregarSaude()])
       .then(function() { setStatus('Painel atualizado com sucesso.', 'success'); })
       .catch(function(e) {
         console.error(e);
@@ -145,6 +166,9 @@
     }
 
     Auth.updateUserInfoUI();
+    var user = Auth.getUser && Auth.getUser();
+    var initials = document.getElementById('user-initials');
+    if (initials && user && user.nome) initials.textContent = user.nome.substring(0,1).toUpperCase();
 
     var outDesktop = document.getElementById('desktop-logout-btn');
     if (outDesktop) outDesktop.addEventListener('click', function() { if (confirm('Sair?')) Auth.logout(); });
@@ -184,6 +208,7 @@
     });
 
     document.getElementById('btn-recarregar-usuarios').addEventListener('click', carregarGestores);
+    document.getElementById('btn-health').addEventListener('click', carregarSaude);
     document.getElementById('btn-manutencao').addEventListener('click', function() {
       var ativo = confirm('Ativar modo manutenção?\n(OK = ativar / Cancelar = desativar)');
       var msg = prompt('Mensagem para o login durante manutenção:', 'Sistema em manutenção. Tente novamente em instantes.');

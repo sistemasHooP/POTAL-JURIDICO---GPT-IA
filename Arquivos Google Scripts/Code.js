@@ -306,6 +306,8 @@ function _routeAction(payload) {
     case 'presidenteGerarBackupAgora':
       return PresidenteService.gerarBackupAgora(payload);
 
+    case 'presidenteAtualizarManutencao':
+      return PresidenteService.atualizarManutencao(payload);
 
     default:
       throw new Error('Ação "' + action + '" não existe. Verifique a documentação.');

@@ -23,8 +23,15 @@
             <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-[0.2em]">Painel do Presidente</p>
         </div>
         <div class="px-5 py-4 border-b border-white/5">
-            <p class="text-sm font-semibold truncate" id="user-name-display">Carregando...</p>
-            <p class="text-[10px] text-blue-400 uppercase tracking-wider font-medium" id="user-profile-display">...</p>
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-sm text-white shadow-lg shadow-blue-900/30">
+                    <span id="user-initials">U</span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate" id="user-name-display">Carregando...</p>
+                    <p class="text-[10px] text-blue-400 uppercase tracking-wider font-medium" id="user-profile-display">...</p>
+                </div>
+            </div>
         </div>
         <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
             <a href="dashboard.html" class="flex items-center gap-3 px-3.5 py-2.5 text-slate-400 hover:bg-white/5 hover:text-white rounded-xl transition-all text-sm">Dashboard</a>
@@ -34,7 +41,7 @@
             <a href="painel-presidente.html" class="flex items-center gap-3 px-3.5 py-2.5 bg-blue-600/20 text-blue-300 rounded-xl transition-all text-sm font-medium border border-blue-500/20">Painel do Presidente</a>
         </nav>
         <div class="p-4 border-t border-white/5">
-            <button id="desktop-logout-btn" class="w-full py-2 text-sm rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30">Encerrar Sessão</button>
+            <button id="desktop-logout-btn" class="flex items-center justify-center gap-3 w-full px-3.5 py-2.5 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all text-sm">Encerrar Sessão</button>
         </div>
     </aside>
 
@@ -55,12 +62,20 @@
                 <div class="bg-white border border-slate-100 rounded-xl p-4"><p class="text-xs text-slate-500">Logs</p><p id="resumo-logs" class="text-2xl font-bold text-slate-800">0</p></div>
             </section>
 
+            <section class="bg-white border border-slate-100 rounded-xl p-4 space-y-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800">Saúde do Sistema</h3>
+                    <button id="btn-health" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs hover:bg-slate-200">Atualizar saúde</button>
+                </div>
+                <div id="saude-sistema" class="text-sm text-slate-500">Carregando status...</div>
+            </section>
+
             <section class="bg-white border border-slate-100 rounded-xl p-4 space-y-3">
                 <div class="flex flex-wrap gap-2">
                     <button id="btn-limpar-logs" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">Limpar logs agora</button>
                     <button id="btn-backup" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700">Gerar backup agora</button>
                     <button id="btn-manutencao" class="px-3 py-2 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-700">Modo manutenção</button>
-                    <button id="btn-recarregar-usuarios" class="px-3 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-800">Atualizar usuários</button>
+                    <button id="btn-recarregar-usuarios" class="px-3 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-800">Atualizar lista de gestores</button>
                 </div>
                 <p id="painel-status" class="text-sm text-slate-500"></p>
             </section>
@@ -76,7 +91,7 @@
                         <button id="btn-exportar-csv" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm">Exportar CSV</button>
                     </div>
                 </div>
-                <div class="overflow-auto border rounded-lg">
+                <div class="overflow-auto border rounded-lg max-h-96 overflow-y-auto">
                     <table class="w-full text-xs">
                         <thead class="bg-slate-50"><tr><th class="p-2 text-left">Data</th><th class="p-2 text-left">Usuário</th><th class="p-2 text-left">Ação</th><th class="p-2 text-left">Status</th><th class="p-2 text-left">Detalhes</th></tr></thead>
                         <tbody id="logs-lista"><tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando...</td></tr></tbody>
