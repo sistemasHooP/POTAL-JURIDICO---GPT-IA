@@ -41,12 +41,31 @@ function doPost(e) {
     var actionName = payload.action || 'SEM_ACTION';
     payload.action = actionName;
 
-    // Modo manutenção: bloqueia login com mensagem configurável.
+    // Modo manutenção: bloqueia login para perfis comuns, mas permite PRESIDENTE.
     var props = PropertiesService.getScriptProperties();
     var maintenanceEnabled = props.getProperty('PRESIDENTE_MAINTENANCE_MODE') === 'true';
     if (maintenanceEnabled && actionName === 'login') {
       var maintenanceMsg = props.getProperty('PRESIDENTE_MAINTENANCE_MESSAGE') || CONFIG.PRESIDENTE_PANEL.MAINTENANCE_MESSAGE;
-      return _createResponse('error', maintenanceMsg);
+      var emailLogin = String(payload.email || '').trim().toLowerCase();
+      var senhaLogin = String(payload.senha || '').trim();
+      var podeEntrarNaManutencao = false;
+
+      if (emailLogin && senhaLogin) {
+        var usuarioManut = Database.findBy(CONFIG.SHEET_NAMES.USUARIOS, 'email', emailLogin);
+        if (usuarioManut && usuarioManut.length > 0) {
+          var candidato = usuarioManut[0];
+          var hashTentativa = AuthService._gerarHashSenha(senhaLogin);
+          var perfilCandidato = String(candidato.perfil || '').toUpperCase();
+          var ativoCandidato = candidato.ativo === true || candidato.ativo === 'TRUE' || candidato.ativo === 'true' || candidato.ativo === 1;
+          if (hashTentativa === candidato.senha && perfilCandidato === ENUMS.PERFIL.PRESIDENTE && ativoCandidato) {
+            podeEntrarNaManutencao = true;
+          }
+        }
+      }
+
+      if (!podeEntrarNaManutencao) {
+        return _createResponse('error', maintenanceMsg);
+      }
     }
 
     Logger.log('[Code] =============================================');
