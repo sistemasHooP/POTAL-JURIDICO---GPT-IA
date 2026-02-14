@@ -355,6 +355,37 @@ const API = {
         listarProcessosAtribuicao: () => API.call('listarProcessosAtribuicao', {}, 'POST', true)
     },
 
+
+    presidente: {
+        getResumo: () => API.call('presidenteGetResumo', {}, 'POST', true),
+        listarLogs: (filtros) => API.call('presidenteListarLogs', filtros || {}, 'POST', true),
+        exportarLogsCsv: (filtros) => API.call('presidenteExportarLogsCsv', filtros || {}, 'POST', true),
+        limparLogs: (dados) => API.call('presidenteLimparLogs', dados || {}, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteLimparLogs');
+            return result;
+        }),
+        getHealth: () => API.call('presidenteGetHealth', {}, 'POST', true),
+        listarUsuariosGestores: () => API.call('presidenteGetUsuariosGestores', {}, 'POST', true),
+        atualizarStatusUsuario: (dados) => API.call('presidenteAtualizarStatusUsuario', dados, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteAtualizarStatusUsuario');
+            return result;
+        }),
+        resetSenhaUsuario: (dados) => API.call('presidenteResetSenhaUsuario', dados, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteResetSenhaUsuario');
+            return result;
+        }),
+        listarBackups: () => API.call('presidenteListarBackups', {}, 'POST', true),
+        gerarBackupAgora: (dados) => API.call('presidenteGerarBackupAgora', dados || {}, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteGerarBackupAgora');
+            return result;
+        }),
+        atualizarManutencao: (dados) => API.call('presidenteAtualizarManutencao', dados || {}, 'POST').then(function(result) {
+            API.invalidateRelatedCache('presidenteAtualizarManutencao');
+            return result;
+        })
+    },
+
+
     drive: {
         upload: (dadosArquivo) => API.call('uploadArquivo', dadosArquivo),
         download: (fileData) => API.call('downloadArquivo', fileData)
