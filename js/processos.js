@@ -14,6 +14,19 @@ let todosProcessos = [];
 let abaAtiva = 'todos'; // 'todos' ou 'consolidados'
 let clientesExpandidos = {}; // { nomeCliente: true/false }
 
+function normalizarCidade(cidade) {
+    return String(cidade || '')
+        .trim()
+        .replace(/\s{2,}/g, ' ')
+        .replace(/(^|\s)\S/g, function(letra) { return letra.toUpperCase(); });
+}
+
+function renderCidadeTag(cidade) {
+    var cidadeFinal = normalizarCidade(cidade);
+    if (!cidadeFinal) return '';
+    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wide">' + Utils.escapeHtml(cidadeFinal) + '</span>';
+}
+
 function renderEtiquetas(etiquetas) {
     var lista = Array.isArray(etiquetas) ? etiquetas : String(etiquetas || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
     if (!lista.length) return '';
@@ -43,10 +56,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // 4. Configurar Filtros da aba Todos (Smart Search)
     const inputBusca = document.getElementById('filter-busca');
     const inputStatus = document.getElementById('filter-status');
+    const inputCidade = document.getElementById('filter-cidade');
     const formBusca = document.getElementById('search-form');
 
     if (inputBusca) inputBusca.addEventListener('input', applyLocalFilters);
     if (inputStatus) inputStatus.addEventListener('change', applyLocalFilters);
+    if (inputCidade) inputCidade.addEventListener('change', applyLocalFilters);
 
     if (formBusca) {
         formBusca.addEventListener('submit', (e) => {
@@ -160,6 +175,7 @@ function loadAllProcessos() {
 
         // Atualiza memoria
         todosProcessos = data;
+        preencherFiltroCidades(todosProcessos);
 
         // Atualiza contadores das abas
         updateTabCounts();
@@ -208,12 +224,36 @@ function updateTabCounts() {
     if (tabConsolidadosCount) tabConsolidadosCount.textContent = clientesUnicos.length;
 }
 
+
+function preencherFiltroCidades(lista) {
+    var select = document.getElementById('filter-cidade');
+    if (!select) return;
+
+    var cidades = {};
+    (lista || []).forEach(function(p) {
+        var cidade = normalizarCidade(p.cidade);
+        if (cidade) cidades[cidade] = true;
+    });
+
+    var atual = select.value || '';
+    var opcoes = Object.keys(cidades).sort(function(a, b) { return a.localeCompare(b, 'pt-BR'); });
+
+    select.innerHTML = '<option value="">Todas as Cidades</option>' + opcoes.map(function(cidade) {
+        return '<option value="' + Utils.escapeHtml(cidade) + '">' + Utils.escapeHtml(cidade) + '</option>';
+    }).join('');
+
+    if (atual && cidades[atual]) {
+        select.value = atual;
+    }
+}
+
 // =========================================================================
 // FILTROS DA ABA "TODOS" (FUNCOES ORIGINAIS - mantidas intactas)
 // =========================================================================
 function applyLocalFilters() {
     const termo = document.getElementById('filter-busca').value.toLowerCase().trim();
     const statusFiltro = document.getElementById('filter-status').value;
+    const cidadeFiltro = normalizarCidade(document.getElementById('filter-cidade').value);
     const resultsCount = document.getElementById('results-count');
 
     const filtrados = todosProcessos.filter(p => {
@@ -224,11 +264,13 @@ function applyLocalFilters() {
             const num = String(p.numero_processo || "").toLowerCase();
             const parte = String(p.parte_nome || "").toLowerCase();
             const tipo = String(p.tipo || "").toLowerCase();
+            const cidade = String(p.cidade || "").toLowerCase();
 
-            matchTexto = num.includes(termo) || parte.includes(termo) || tipo.includes(termo);
+            matchTexto = num.includes(termo) || parte.includes(termo) || tipo.includes(termo) || cidade.includes(termo);
         }
 
-        return matchStatus && matchTexto;
+        var matchCidade = !cidadeFiltro || normalizarCidade(p.cidade) === cidadeFiltro;
+        return matchStatus && matchTexto && matchCidade;
     });
 
     if (resultsCount) resultsCount.textContent = filtrados.length;
@@ -264,6 +306,7 @@ function renderTable(lista) {
         const statusDesc = Utils.getStatusLabel(p.status);
         const responsavel = p.responsavel_nome || '-';
         const etiquetasHtml = renderEtiquetas(p.etiquetas);
+        const cidadeTagHtml = renderCidadeTag(p.cidade);
 
         // --- LOGICA DE PRAZO VISUAL ---
         let prazoHtml = '';
@@ -315,6 +358,7 @@ function renderTable(lista) {
                         ${p.parte_nome}
                     </span>
                     <span class="text-[11px] text-slate-400 md:hidden">Resp: ${Utils.escapeHtml(responsavel)}</span>
+                    <div class="mt-1 md:hidden">${cidadeTagHtml}</div>
                     <div class="md:hidden">${etiquetasHtml}</div>
                     <div class="md:hidden">${prazoHtml}</div>
                 </div>
@@ -324,6 +368,7 @@ function renderTable(lista) {
                     <span class="text-sm font-medium text-slate-900">${p.parte_nome}</span>
                     <span class="text-xs text-slate-500">${p.tipo}</span>
                     <span class="text-[11px] text-slate-400">Responsável: ${Utils.escapeHtml(responsavel)}</span>
+                    <div class="mt-1">${cidadeTagHtml}</div>
                     ${etiquetasHtml}
                 </div>
             </td>
@@ -491,6 +536,7 @@ function renderConsolidados() {
                                 prazoBadge +
                             '</div>' +
                             '<p class="text-xs text-slate-500 mt-0.5">' + Utils.escapeHtml(p.tipo || '-') + ' &middot; Entrada: ' + Utils.escapeHtml(data) + '</p>' +
+                            '<div class="mt-1">' + renderCidadeTag(p.cidade) + '</div>' +
                             '<p class="text-[11px] text-slate-400 mt-0.5">Responsável: ' + Utils.escapeHtml(p.responsavel_nome || '-') + '</p>' +
                             (renderEtiquetas(p.etiquetas)) +
                         '</div>' +

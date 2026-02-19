@@ -32,10 +32,12 @@ var ProcessosService = {
     // 3) Filtros
     var statusFiltro = (payload.status || '').toString().trim().toUpperCase();
     var termoBusca = Utils.normalizeText((payload.busca || '').toString().trim());
+    var cidadeFiltro = Utils.normalizeText((payload.cidade || '').toString().trim());
 
     var resultado = processos.filter(function(p) {
       var matchStatus = true;
       var matchBusca = true;
+      var matchCidade = true;
 
       if (statusFiltro) {
         matchStatus = (String(p.status || '').toUpperCase() === statusFiltro);
@@ -45,13 +47,20 @@ var ProcessosService = {
         var num = Utils.normalizeText(String(p.numero_processo || ''));
         var parte = Utils.normalizeText(String(p.parte_nome || ''));
         var tipo = Utils.normalizeText(String(p.tipo || ''));
+        var cidade = Utils.normalizeText(String(p.cidade || ''));
 
         matchBusca = (num.indexOf(termoBusca) > -1 ||
                       parte.indexOf(termoBusca) > -1 ||
-                      tipo.indexOf(termoBusca) > -1);
+                      tipo.indexOf(termoBusca) > -1 ||
+                      cidade.indexOf(termoBusca) > -1);
       }
 
-      return matchStatus && matchBusca;
+      if (cidadeFiltro) {
+        var cidadeAtual = Utils.normalizeText(String(p.cidade || ''));
+        matchCidade = cidadeAtual === cidadeFiltro;
+      }
+
+      return matchStatus && matchBusca && matchCidade;
     });
 
     // 4) Permissão: ADVOGADO só vê processos atribuídos a ele
@@ -91,6 +100,7 @@ var ProcessosService = {
     var numeroProcesso = String(payload.numero_processo || '').trim();
     var parteNome = String(payload.parte_nome || '').trim();
     var tipoProcesso = String(payload.tipo || '').trim();
+    var cidadeProcesso = String(payload.cidade || '').trim().replace(/\s{2,}/g, ' ');
 
     if (!numeroProcesso) {
       throw new Error('Número do processo é obrigatório.');
@@ -102,6 +112,10 @@ var ProcessosService = {
 
     if (!tipoProcesso) {
       throw new Error('Tipo do processo é obrigatório.');
+    }
+
+    if (!cidadeProcesso) {
+      throw new Error('Cidade do processo é obrigatória.');
     }
 
     // 3) Duplicidade de número (normalizada)
@@ -228,6 +242,7 @@ var ProcessosService = {
       email_interessado: emailInteressado,
       cliente_id: clienteId,
       tipo: tipoProcesso,
+      cidade: cidadeProcesso,
       status: ENUMS.STATUS_PROCESSO.EM_ANDAMENTO,
       data_entrada: payload.data_entrada || new Date(),
       id_pasta_drive: infoPasta.id,
