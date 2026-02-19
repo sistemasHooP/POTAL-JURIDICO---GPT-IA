@@ -287,6 +287,18 @@ function loadProcessoDetalhe(id) {
         const elTipo = document.getElementById('proc-tipo');
         if (elTipo) elTipo.textContent = p.tipo || 'Não Informado';
 
+        const elCidade = document.getElementById('proc-cidade');
+        const cidadeProcesso = String(p.cidade || '').trim();
+        if (elCidade) {
+            if (cidadeProcesso) {
+                elCidade.textContent = cidadeProcesso;
+                elCidade.classList.remove('hidden');
+            } else {
+                elCidade.classList.add('hidden');
+                elCidade.textContent = '';
+            }
+        }
+
         const elDescricao = document.getElementById('proc-descricao');
         if (elDescricao) {
             elDescricao.textContent = p.descricao || "Nenhuma observação inicial registrada.";

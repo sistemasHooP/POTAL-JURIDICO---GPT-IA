@@ -124,7 +124,7 @@
             <div id="view-todos">
                 <!-- Barra de Filtros -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6">
-                    <form id="search-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <form id="search-form" class="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div class="md:col-span-2 relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,7 +133,7 @@
                             </div>
                             <input type="text" id="filter-busca"
                                 class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="Buscar por nome ou numero do processo...">
+                                placeholder="Buscar por nome, numero, tipo ou cidade...">
                         </div>
                         <div>
                             <select id="filter-status" class="block w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -143,6 +143,11 @@
                                 <option value="JULGADO">Julgado</option>
                                 <option value="ARQUIVADO">Arquivado</option>
                                 <option value="CANCELADO">Cancelado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="filter-cidade" class="block w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Todas as Cidades</option>
                             </select>
                         </div>
                         <div>
