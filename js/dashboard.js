@@ -137,6 +137,21 @@ function updateCounter(elementId, value, instant = false) {
     }, 40);
 }
 
+
+function normalizarCidadeDashboard(cidade) {
+    return String(cidade || '')
+        .trim()
+        .replace(/\s{2,}/g, ' ')
+        .replace(/(^|\s)\S/g, function(letra) { return letra.toUpperCase(); });
+}
+
+function renderCidadeTagDashboard(cidade) {
+    var cidadeFinal = normalizarCidadeDashboard(cidade);
+    if (!cidadeFinal) return '';
+
+    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wide">' + Utils.escapeHtml(cidadeFinal) + '</span>';
+}
+
 function renderEtiquetasDashboard(etiquetas) {
     var lista = Array.isArray(etiquetas) ? etiquetas : String(etiquetas || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
     if (!lista.length) return '';
@@ -166,6 +181,7 @@ function renderRecentTable(processos) {
         const dataEntrada = p.data_entrada ? Utils.formatDate(p.data_entrada).split(' ')[0] : '-';
         const responsavel = p.responsavel_nome || '-';
         const etiquetasHtml = renderEtiquetasDashboard(p.etiquetas);
+        const cidadeTagHtml = renderCidadeTagDashboard(p.cidade);
 
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0";
@@ -180,6 +196,7 @@ function renderRecentTable(processos) {
                     <span class="font-bold text-slate-700">${p.numero_processo || 'S/N'}</span>
                     <span class="text-xs text-slate-400 md:hidden">${p.parte_nome}</span>
                     <span class="text-[11px] text-slate-400 md:hidden">Resp: ${Utils.escapeHtml(responsavel)}</span>
+                    <div class="mt-1 md:hidden">${cidadeTagHtml}</div>
                     <div class="md:hidden">${etiquetasHtml}</div>
                 </div>
             </td>
@@ -187,6 +204,7 @@ function renderRecentTable(processos) {
                 <div class="text-sm text-slate-900 font-medium">${p.parte_nome}</div>
                 <div class="text-xs text-slate-400">${p.tipo}</div>
                 <div class="text-[11px] text-slate-400">Responsável: ${Utils.escapeHtml(responsavel)}</div>
+                <div class="mt-1">${cidadeTagHtml}</div>
                 ${etiquetasHtml}
             </td>
             <td class="px-6 py-4">
