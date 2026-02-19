@@ -186,6 +186,13 @@
         return Utils.formatDocument(cpf);
     }
 
+function normalizarCidade(valor) {
+        return String(valor || '')
+            .trim()
+            .replace(/\s{2,}/g, ' ')
+            .replace(/(^|\s)\S/g, function(letra) { return letra.toUpperCase(); });
+    }
+
     function pareceSerCPF(termo) {
         var digitos = termo.replace(/\D/g, '');
         return digitos.length >= 6 && digitos.length <= 14;
@@ -753,6 +760,7 @@
         var inputOutros = document.getElementById('tipo_outro');
         var parte = document.getElementById('parte_nome').value.trim();
         var dataEntrada = document.getElementById('data_entrada').value;
+        var cidade = normalizarCidade(document.getElementById('cidade').value);
         var email = document.getElementById('email_interessado').value.trim();
         var descricao = document.getElementById('descricao').value.trim();
 
@@ -780,6 +788,11 @@
             document.getElementById('parte_nome').focus();
             return;
         }
+        if (!cidade) {
+            Utils.showToast('Informe a cidade do processo.', 'warning');
+            document.getElementById('cidade').focus();
+            return;
+        }
 
         Utils.showLoading('Criando pasta digital...', 'database');
 
@@ -788,6 +801,7 @@
                 numero_processo: numero,
                 tipo: tipoFinal,
                 parte_nome: parte,
+                cidade: cidade,
                 data_entrada: dataEntrada,
                 email_interessado: email.toLowerCase(),
                 descricao: descricao
